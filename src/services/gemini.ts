@@ -51,7 +51,7 @@ export async function analyzeCV(cvText: string | null, fileData: FileData | null
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-latest",
+      model: "gemini-3-flash-preview",
       contents: { parts },
       config: {
         responseMimeType: "application/json",
@@ -102,7 +102,7 @@ export async function analyzeCV(cvText: string | null, fileData: FileData | null
 export async function getChatResponse(message: string, context: string) {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-latest",
+      model: "gemini-3-flash-preview",
       contents: `
         You are "Skope Buddy", a helpful career assistant. 
         Context about the user: ${context}
@@ -154,7 +154,7 @@ export async function analyzeJobMatch(cvText: string | null, fileData: FileData 
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-latest",
+      model: "gemini-3-flash-preview",
       contents: { parts },
       config: {
         responseMimeType: "application/json",
@@ -187,7 +187,7 @@ export async function analyzeJobMatch(cvText: string | null, fileData: FileData 
 export async function getInterviewResponse(history: {role: 'user' | 'ai', text: string}[], jobTitle: string, jobDescription: string) {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-latest",
+      model: "gemini-3-flash-preview",
       contents: `
         You are a highly professional and demanding interviewer for the position of ${jobTitle}.
         Job Description: ${jobDescription}
