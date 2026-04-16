@@ -1,0 +1,73 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A student or recruiter using the platform.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique ID from Firebase Auth." },
+        "email": { "type": "string", "format": "email", "description": "User's email address." },
+        "displayName": { "type": "string", "description": "User's full name." },
+        "role": { "type": "string", "enum": ["student", "recruiter"], "description": "The user's role on the platform." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the user profile was created." },
+        "birthday": { "type": "string", "format": "date", "description": "User's birthday." },
+        "bio": { "type": "string", "description": "User's short bio." },
+        "desiredJobs": { "type": "array", "items": { "type": "string" }, "description": "List of desired job titles." },
+        "location": { "type": "string", "description": "User's location." }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "CV": {
+      "title": "CV",
+      "description": "A student's uploaded CV and its AI analysis.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string", "description": "The UID of the student who owns this CV." },
+        "cvText": { "type": "string", "description": "The full text of the CV." },
+        "analysis": { "type": "string", "description": "AI-generated analysis of the CV." },
+        "atsScore": { "type": "number", "description": "Calculated ATS score (0-100)." },
+        "suggestedCourses": { 
+          "type": "array", 
+          "items": { 
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "provider": { "type": "string" },
+              "url": { "type": "string" },
+              "relevance": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["studentId", "cvText"]
+    },
+    "Job": {
+      "title": "Job",
+      "description": "A job posting created by a recruiter.",
+      "type": "object",
+      "properties": {
+        "recruiterId": { "type": "string", "description": "The UID of the recruiter who posted the job." },
+        "title": { "type": "string" },
+        "company": { "type": "string" },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["recruiterId", "title", "company"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles."
+    },
+    "/cvs/{cvId}": {
+      "schema": "CV",
+      "description": "Student CVs and analyses."
+    },
+    "/jobs/{jobId}": {
+      "schema": "Job",
+      "description": "Job postings."
+    }
+  }
+}

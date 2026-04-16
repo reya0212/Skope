@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --color-skope-light: #e2e8f0; /* Darker slate-200 */
+  --color-skope-navy: #0f172a; /* Darker navy blue */
+  --color-skope-sky: #2563eb; /* Darker blue */
+  --color-skope-blue: #1d4ed8; /* Stronger blue */
+  --color-skope-steel: #172554; /* Navy blue-950 */
+  --color-skope-dark: #010409; /* Very dark navy blue (GitHub style) */
+  --color-skope-deep: #020617; /* Deep navy blue */
+}
+
+/* Configure Tailwind 4 for class-based dark mode */
+@variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --base-font-size: 17px;
+    --base-font-weight: 400;
+  }
+
+  html {
+    font-size: var(--base-font-size);
+    font-family: var(--font-sans);
+    font-weight: var(--base-font-weight);
+    @apply antialiased;
+  }
+  
+  body {
+    @apply bg-slate-50 text-slate-900 transition-colors duration-200;
+  }
+
+  .dark body {
+    @apply bg-skope-dark text-slate-100;
+  }
+
+  * {
+    @apply border-skope-light dark:border-skope-steel;
+  }
+
+  /* Accessibility improvements */
+  .font-bold-mode {
+    --base-font-weight: 600;
+  }
+  
+  .font-extra-bold-mode {
+    --base-font-weight: 800;
+  }
+
+  /* Accessibility Filters */
+  .filter-grayscale {
+    filter: grayscale(100%);
+  }
+  
+  .filter-high-contrast {
+    filter: contrast(1.25) brightness(1.1);
+  }
+  
+  .filter-protanopia {
+    filter: url('#protanopia-filter');
+  }
+  
+  .filter-deuteranopia {
+    filter: url('#deuteranopia-filter');
+  }
+
+  .filter-tritanopia {
+    filter: url('#tritanopia-filter');
+  }
+}

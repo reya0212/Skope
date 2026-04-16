@@ -1,0 +1,148 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "reyaishere0201@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['uid', 'email', 'displayName', 'role', 'createdAt', 'birthday', 'bio', 'desiredJobs', 'location', 'age', 'phone', 'photoURL', 'companyName', 'companyLogo', 'companyDescription']) &&
+             data.uid is string && data.uid == request.auth.uid &&
+             data.email is string && isValidEmail(data.email) &&
+             data.role in ['student', 'recruiter'] &&
+             data.displayName is string && data.displayName.size() < 100 &&
+             (!('birthday' in data) || data.birthday is string) &&
+             (!('bio' in data) || data.bio is string) &&
+             (!('location' in data) || data.location is string) &&
+             (!('age' in data) || data.age == null || data.age is number) &&
+             (!('phone' in data) || data.phone == null || data.phone is string) &&
+             (!('photoURL' in data) || data.photoURL is string) &&
+             (!('companyName' in data) || data.companyName is string) &&
+             (!('companyLogo' in data) || data.companyLogo is string) &&
+             (!('companyDescription' in data) || data.companyDescription is string) &&
+             (!('desiredJobs' in data) || data.desiredJobs is list);
+    }
+
+    function isValidCV(data) {
+      return hasOnlyAllowedFields(['studentId', 'cvText', 'analysis', 'atsScore', 'suggestedCourses', 'createdAt']) &&
+             data.studentId is string && data.studentId == request.auth.uid &&
+             data.cvText is string &&
+             data.atsScore is number &&
+             data.suggestedCourses is list;
+    }
+
+    function isValidJob(data) {
+      return hasOnlyAllowedFields(['recruiterId', 'title', 'company', 'companyLogo', 'location', 'description', 'applicationLink', 'createdAt']) &&
+             data.recruiterId is string && data.recruiterId == request.auth.uid &&
+             data.title is string && data.title.size() < 200 &&
+             data.company is string && data.company.size() < 200 &&
+             (!('companyLogo' in data) || data.companyLogo is string) &&
+             (!('location' in data) || data.location is string) &&
+             (!('applicationLink' in data) || data.applicationLink is string);
+    }
+
+    function isValidApplication(data) {
+      return hasOnlyAllowedFields(['jobId', 'recruiterId', 'studentId', 'studentName', 'studentPhone', 'studentEmail', 'cvText', 'status', 'createdAt', 'unreadCount', 'lastMessage', 'lastMessageAt']) &&
+             data.jobId is string &&
+             data.recruiterId is string &&
+             data.studentId is string &&
+             data.status in ['pending', 'reviewed', 'accepted', 'rejected'] &&
+             (!('unreadCount' in data) || data.unreadCount is map) &&
+             (!('lastMessage' in data) || data.lastMessage is string);
+    }
+
+    function isValidMessage(data) {
+      return hasOnlyAllowedFields(['role', 'text', 'type', 'url', 'createdAt']) &&
+             data.role is string &&
+             data.text is string &&
+             data.type in ['text', 'image', 'file'] &&
+             (!('url' in data) || data.url == null || data.url is string);
+    }
+
+    function isValidBuddyChat(data) {
+      return hasOnlyAllowedFields(['participants', 'lastMessage', 'lastMessageAt', 'unreadCount', 'createdAt']) &&
+             data.participants is list &&
+             data.participants.size() == 2 &&
+             (!('unreadCount' in data) || data.unreadCount is map) &&
+             (!('lastMessage' in data) || data.lastMessage is string);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data) && 
+                    request.resource.data.role == resource.data.role; // Role cannot be changed by user
+      allow delete: if isAdmin();
+    }
+
+    match /cvs/{cvId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.studentId) || 
+                  get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'recruiter');
+      allow create: if isAuthenticated() && isValidCV(request.resource.data);
+      allow update: if isAuthenticated() && isOwner(resource.data.studentId) && isValidCV(request.resource.data);
+      allow delete: if isAuthenticated() && isOwner(resource.data.studentId);
+    }
+
+    match /jobs/{jobId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && 
+                    get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'recruiter' && 
+                    isValidJob(request.resource.data);
+      allow update: if isAuthenticated() && isOwner(resource.data.recruiterId) && isValidJob(request.resource.data);
+      allow delete: if isAuthenticated() && isOwner(resource.data.recruiterId);
+    }
+
+    match /job_applications/{appId} {
+      allow read: if isAuthenticated() && (request.auth.uid == resource.data.studentId || request.auth.uid == resource.data.recruiterId);
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.studentId && isValidApplication(request.resource.data);
+      allow update: if isAuthenticated() && (request.auth.uid == resource.data.studentId || request.auth.uid == resource.data.recruiterId) && isValidApplication(request.resource.data);
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && (get(/databases/$(database)/documents/job_applications/$(appId)).data.studentId == request.auth.uid || 
+                      get(/databases/$(database)/documents/job_applications/$(appId)).data.recruiterId == request.auth.uid);
+        allow create: if isAuthenticated() && (get(/databases/$(database)/documents/job_applications/$(appId)).data.studentId == request.auth.uid || 
+                      get(/databases/$(database)/documents/job_applications/$(appId)).data.recruiterId == request.auth.uid) && isValidMessage(request.resource.data);
+      }
+    }
+
+    match /buddy_chats/{chatId} {
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      allow create: if isAuthenticated() && request.auth.uid in request.resource.data.participants && isValidBuddyChat(request.resource.data);
+      allow update: if isAuthenticated() && request.auth.uid in resource.data.participants && isValidBuddyChat(request.resource.data);
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/buddy_chats/$(chatId)).data.participants;
+        allow create: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/buddy_chats/$(chatId)).data.participants && isValidMessage(request.resource.data);
+      }
+    }
+  }
+}

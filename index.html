@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Skope - Your Career Journey</title>
+    <script>
+      (function() {
+        const darkMode = localStorage.getItem('skope_dark_mode') === 'true';
+        if (darkMode) {
+          document.documentElement.classList.add('dark');
+        }
+        const fontSize = localStorage.getItem('skope_font_size');
+        if (fontSize) {
+          document.documentElement.style.setProperty('--base-font-size', fontSize + 'px');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
