@@ -1679,11 +1679,12 @@ const ProfileView = ({ profile, onUpdate, accFilter, setAccFilter }: {
                   />
                 </div>
                 <div>
-                  <label htmlFor="edit-company-desc" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Company Description</label>
+                  <label htmlFor="edit-company-desc" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Company Bio</label>
                   <textarea 
                     id="edit-company-desc"
                     value={formData.companyDescription || ''}
                     onChange={(e) => setFormData({...formData, companyDescription: e.target.value})}
+                    placeholder="Tell us about the company..."
                     className="w-full h-24 p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white resize-none"
                   />
                 </div>
@@ -1733,8 +1734,8 @@ const ProfileView = ({ profile, onUpdate, accFilter, setAccFilter }: {
 
             {profile.role === 'recruiter' && (
               <div className="bg-skope-light/10 dark:bg-skope-deep p-6 rounded-3xl border border-skope-light dark:border-skope-steel">
-                <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-2">Company Description</p>
-                <p className="text-sm text-slate-600 dark:text-slate-300">{profile.companyDescription || 'No company description provided.'}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-2">Company Bio</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300">{profile.companyDescription || 'No company bio provided.'}</p>
               </div>
             )}
             
