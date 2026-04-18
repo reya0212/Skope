@@ -820,17 +820,8 @@ const RoleSelection = ({ onSelect, existingProfile }: { onSelect: (role: UserRol
           </div>
           <form onSubmit={(e) => {
             e.preventDefault();
-            onSelect('recruiter', { companyName, companyLogo, companyDescription, photoURL });
+            onSelect('recruiter', { companyName, companyLogo, companyDescription });
           }} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-400 uppercase ml-4">Your Profile Picture URL</label>
-              <input 
-                value={photoURL}
-                onChange={(e) => setPhotoURL(e.target.value)}
-                placeholder="https://example.com/photo.jpg"
-                className="w-full p-4 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-2xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
-              />
-            </div>
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-400 uppercase ml-4">Company Name</label>
               <input 
@@ -1595,73 +1586,77 @@ const ProfileView = ({ profile, onUpdate, accFilter, setAccFilter }: {
 
         {isEditing ? (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="edit-name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
-              <input 
-                id="edit-name"
-                value={formData.displayName}
-                onChange={(e) => setFormData({...formData, displayName: e.target.value})}
-                className="w-full p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
-              />
-            </div>
-            <div>
-              <label htmlFor="edit-bio" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Bio</label>
-              <textarea 
-                id="edit-bio"
-                value={formData.bio || ''}
-                onChange={(e) => setFormData({...formData, bio: e.target.value})}
-                placeholder="Tell us a bit about yourself..."
-                className="w-full h-24 p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white resize-none"
-              />
-            </div>
-            <div>
-              <label htmlFor="edit-birthday" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Birthday</label>
-              <input 
-                id="edit-birthday"
-                type="date"
-                value={formData.birthday || ''}
-                onChange={(e) => setFormData({...formData, birthday: e.target.value})}
-                className="w-full p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
-              />
-            </div>
-            <div>
-              <label htmlFor="edit-location" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Location</label>
-              <input 
-                id="edit-location"
-                value={formData.location || ''}
-                onChange={(e) => setFormData({...formData, location: e.target.value})}
-                className="w-full p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
-              />
-            </div>
-            <div>
-              <label htmlFor="edit-age" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Age</label>
-              <input 
-                id="edit-age"
-                type="number"
-                value={formData.age || ''}
-                onChange={(e) => setFormData({...formData, age: parseInt(e.target.value)})}
-                className="w-full p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
-              />
-            </div>
-            <div>
-              <label htmlFor="edit-photo" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Profile Picture URL</label>
-              <input 
-                id="edit-photo"
-                value={formData.photoURL || ''}
-                onChange={(e) => setFormData({...formData, photoURL: e.target.value})}
-                placeholder="https://example.com/photo.jpg"
-                className="w-full p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
-              />
-            </div>
-            <div>
-              <label htmlFor="edit-jobs" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Desired Jobs (comma separated)</label>
-              <input 
-                id="edit-jobs"
-                value={formData.desiredJobs?.join(', ') || ''}
-                onChange={(e) => setFormData({...formData, desiredJobs: e.target.value.split(',').map(s => s.trim())})}
-                className="w-full p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
-              />
-            </div>
+            {profile.role === 'student' && (
+              <>
+                <div>
+                  <label htmlFor="edit-name" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Full Name</label>
+                  <input 
+                    id="edit-name"
+                    value={formData.displayName}
+                    onChange={(e) => setFormData({...formData, displayName: e.target.value})}
+                    className="w-full p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="edit-bio" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Bio</label>
+                  <textarea 
+                    id="edit-bio"
+                    value={formData.bio || ''}
+                    onChange={(e) => setFormData({...formData, bio: e.target.value})}
+                    placeholder="Tell us a bit about yourself..."
+                    className="w-full h-24 p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white resize-none"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="edit-birthday" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Birthday</label>
+                  <input 
+                    id="edit-birthday"
+                    type="date"
+                    value={formData.birthday || ''}
+                    onChange={(e) => setFormData({...formData, birthday: e.target.value})}
+                    className="w-full p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="edit-location" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Location</label>
+                  <input 
+                    id="edit-location"
+                    value={formData.location || ''}
+                    onChange={(e) => setFormData({...formData, location: e.target.value})}
+                    className="w-full p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="edit-age" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Age</label>
+                  <input 
+                    id="edit-age"
+                    type="number"
+                    value={formData.age || ''}
+                    onChange={(e) => setFormData({...formData, age: parseInt(e.target.value)})}
+                    className="w-full p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="edit-photo" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Profile Picture URL</label>
+                  <input 
+                    id="edit-photo"
+                    value={formData.photoURL || ''}
+                    onChange={(e) => setFormData({...formData, photoURL: e.target.value})}
+                    placeholder="https://example.com/photo.jpg"
+                    className="w-full p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="edit-jobs" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Desired Jobs (comma separated)</label>
+                  <input 
+                    id="edit-jobs"
+                    value={formData.desiredJobs?.join(', ') || ''}
+                    onChange={(e) => setFormData({...formData, desiredJobs: e.target.value.split(',').map(s => s.trim())})}
+                    className="w-full p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+                  />
+                </div>
+              </>
+            )}
             {profile.role === 'recruiter' && (
               <>
                 <div>
@@ -1706,57 +1701,59 @@ const ProfileView = ({ profile, onUpdate, accFilter, setAccFilter }: {
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <div className="w-20 h-20 bg-skope-light dark:bg-skope-deep rounded-2xl flex items-center justify-center text-skope-navy dark:text-skope-light overflow-hidden border-2 border-white dark:border-skope-steel shadow-sm">
-                {profile.photoURL ? (
-                  <img src={profile.photoURL} alt={profile.displayName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                {profile.role === 'recruiter' ? (
+                  profile.companyLogo ? (
+                    <img src={profile.companyLogo} alt={profile.companyName} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                  ) : (
+                    <Briefcase className="w-10 h-10" />
+                  )
                 ) : (
-                  <UserIcon className="w-10 h-10" />
+                  profile.photoURL ? (
+                    <img src={profile.photoURL} alt={profile.displayName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <UserIcon className="w-10 h-10" />
+                  )
                 )}
               </div>
               <div>
-                <h3 className="text-xl font-bold text-skope-dark dark:text-white">{profile.displayName}</h3>
+                <h3 className="text-xl font-bold text-skope-dark dark:text-white">
+                  {profile.role === 'recruiter' ? (profile.companyName || profile.displayName) : profile.displayName}
+                </h3>
                 <p className="text-slate-500 dark:text-slate-400">{profile.email}</p>
+                {profile.role === 'recruiter' && <span className="text-[10px] font-black uppercase tracking-widest bg-skope-navy dark:bg-skope-blue text-white px-2 py-0.5 rounded-full mt-1 inline-block">Recruiter / Employer</span>}
               </div>
             </div>
 
-            {profile.bio && (
+            {profile.role === 'student' && profile.bio && (
               <div className="bg-skope-light/10 dark:bg-skope-deep p-6 rounded-3xl border border-skope-light dark:border-skope-steel">
                 <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-2">About Me</p>
                 <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap leading-relaxed">{profile.bio}</p>
               </div>
             )}
 
-            {profile.role === 'recruiter' && profile.companyName && (
+            {profile.role === 'recruiter' && (
               <div className="bg-skope-light/10 dark:bg-skope-deep p-6 rounded-3xl border border-skope-light dark:border-skope-steel">
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="w-12 h-12 bg-white dark:bg-skope-dark rounded-xl flex items-center justify-center overflow-hidden border border-skope-light dark:border-skope-steel">
-                    {profile.companyLogo ? (
-                      <img src={profile.companyLogo} alt={profile.companyName} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                    ) : (
-                      <Briefcase className="w-6 h-6 text-slate-400" />
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-skope-dark dark:text-white">{profile.companyName}</h4>
-                    <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Company Profile</p>
-                  </div>
-                </div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">{profile.companyDescription || 'No company description provided.'}</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-2">Company Description</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300">{profile.companyDescription || 'No company description provided.'}</p>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-skope-light/10 dark:bg-skope-deep p-4 rounded-2xl">
-                <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-1">Birthday</p>
-                <p className="text-slate-900 dark:text-white font-medium">{profile.birthday || 'Not set'}</p>
+            
+            {profile.role === 'student' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-skope-light/10 dark:bg-skope-deep p-4 rounded-2xl">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-1">Birthday</p>
+                  <p className="text-slate-900 dark:text-white font-medium">{profile.birthday || 'Not set'}</p>
+                </div>
+                <div className="bg-skope-light/10 dark:bg-skope-deep p-4 rounded-2xl">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-1">Age</p>
+                  <p className="text-slate-900 dark:text-white font-medium">{profile.age || 'Not set'}</p>
+                </div>
+                <div className="bg-skope-light/10 dark:bg-skope-deep p-4 rounded-2xl">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-1">Location</p>
+                  <p className="text-slate-900 dark:text-white font-medium">{profile.location || 'Not set'}</p>
+                </div>
               </div>
-              <div className="bg-skope-light/10 dark:bg-skope-deep p-4 rounded-2xl">
-                <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-1">Age</p>
-                <p className="text-slate-900 dark:text-white font-medium">{profile.age || 'Not set'}</p>
-              </div>
-              <div className="bg-skope-light/10 dark:bg-skope-deep p-4 rounded-2xl">
-                <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-1">Location</p>
-                <p className="text-slate-900 dark:text-white font-medium">{profile.location || 'Not set'}</p>
-              </div>
-            </div>
+            )}
 
             {/* Badges Section */}
             <div className="pt-6 border-t border-skope-light dark:border-skope-steel">
