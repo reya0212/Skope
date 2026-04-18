@@ -747,7 +747,6 @@ const RoleSelection = ({ onSelect, existingProfile }: { onSelect: (role: UserRol
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-400 uppercase ml-4">Date of Birth</label>
                 <input 
-                  required
                   type="date"
                   value={studentDob}
                   onChange={(e) => setStudentDob(e.target.value)}
@@ -757,7 +756,6 @@ const RoleSelection = ({ onSelect, existingProfile }: { onSelect: (role: UserRol
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-400 uppercase ml-4">Age</label>
                 <input 
-                  required
                   type="number"
                   value={studentAge}
                   onChange={(e) => setStudentAge(e.target.value)}
@@ -769,7 +767,6 @@ const RoleSelection = ({ onSelect, existingProfile }: { onSelect: (role: UserRol
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-400 uppercase ml-4">Location</label>
               <input 
-                required
                 value={studentLocation}
                 onChange={(e) => setStudentLocation(e.target.value)}
                 placeholder="City, Country"
@@ -779,7 +776,6 @@ const RoleSelection = ({ onSelect, existingProfile }: { onSelect: (role: UserRol
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-400 uppercase ml-4">Phone Number</label>
               <input 
-                required
                 value={studentPhone}
                 onChange={(e) => setStudentPhone(e.target.value)}
                 placeholder="+1 234 567 890"
@@ -856,7 +852,6 @@ const RoleSelection = ({ onSelect, existingProfile }: { onSelect: (role: UserRol
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-400 uppercase ml-4">Company Description</label>
               <textarea 
-                required
                 value={companyDescription}
                 onChange={(e) => setCompanyDescription(e.target.value)}
                 placeholder="Tell us about your company..."
@@ -1111,10 +1106,10 @@ export default function App() {
   const isProfileComplete = (p: UserProfile | null) => {
     if (!p) return false;
     if (p.role === 'student') {
-      return !!(p.displayName && p.birthday && p.age && p.location && p.phone);
+      return !!p.displayName;
     }
     if (p.role === 'recruiter') {
-      return !!(p.companyName && p.companyDescription);
+      return !!p.companyName;
     }
     return true;
   };
