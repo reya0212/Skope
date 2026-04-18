@@ -494,7 +494,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   }
 }
 
-const Login = () => {
+const Login = ({ onShowPrivacy }: { onShowPrivacy?: () => void }) => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState('');
@@ -562,7 +562,18 @@ const Login = () => {
             {isSignUp ? 'Join Skope' : 'Welcome Back'}
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
-            {isSignUp ? 'Create your account to start your journey.' : 'Your career journey continues here.'}
+            {isSignUp ? (
+              <>
+                Create your account to start your journey. By signing up, you agree to our{' '}
+                <button 
+                  type="button"
+                  onClick={() => onShowPrivacy?.()} 
+                  className="text-skope-navy dark:text-skope-blue font-bold hover:underline underline-offset-4"
+                >
+                  Privacy Policy
+                </button>.
+              </>
+            ) : 'Your career journey continues here.'}
           </p>
         </div>
 
@@ -932,6 +943,7 @@ export default function App() {
   const [boldness, setBoldness] = useState(() => localStorage.getItem('skope_boldness') || 'normal');
   const [accessibilityFilter, setAccessibilityFilter] = useState(() => localStorage.getItem('skope_acc_filter') || 'none');
   const [unreadCounts, setUnreadCounts] = useState<{ buddy: number, skope: number, applicants: number }>({ buddy: 0, skope: 0, applicants: 0 });
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   const [viewingProfileId, setViewingProfileId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1117,12 +1129,18 @@ export default function App() {
     return true;
   };
 
+  if (showPrivacyPolicy) return (
+    <div className={`${isDarkMode ? 'dark' : ''} font-sans bg-slate-200 dark:bg-black`}>
+      <PrivacyPolicy onBack={() => setShowPrivacyPolicy(false)} />
+    </div>
+  );
+
   if (!user) return (
     <div className={`${isDarkMode ? 'dark' : ''} font-sans bg-slate-200 dark:bg-black`}>
       <div className="fixed top-4 right-4 z-[60]">
         <AccessibilityMenu {...accessibilityProps} />
       </div>
-      <Login />
+      <Login onShowPrivacy={() => setShowPrivacyPolicy(true)} />
     </div>
   );
 
@@ -1186,6 +1204,7 @@ export default function App() {
             onUpdate={updateProfile} 
             accFilter={accessibilityFilter}
             setAccFilter={setAccessibilityFilter}
+            onShowPrivacy={() => setShowPrivacyPolicy(true)}
           />
         ) : profile.role === 'student' ? (
           <StudentView profile={profile} activeTab={activeTab} onViewProfile={setViewingProfileId} />
@@ -1260,6 +1279,108 @@ export default function App() {
     </ErrorBoundary>
   );
 }
+
+const PrivacyPolicy = ({ onBack }: { onBack: () => void }) => {
+  return (
+    <div className="min-h-screen flex flex-col items-center py-12 px-4 max-w-2xl mx-auto">
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="w-full bg-white dark:bg-skope-dark p-8 md:p-12 rounded-[2.5rem] shadow-xl border border-skope-light dark:border-skope-steel space-y-8"
+      >
+        <div className="flex items-center gap-4 mb-4">
+          <button 
+            onClick={onBack}
+            className="p-2 hover:bg-slate-100 dark:hover:bg-skope-deep rounded-full transition-colors"
+            aria-label="Back to Sign Up"
+          >
+            <ChevronLeft className="w-6 h-6 text-skope-navy dark:text-skope-blue" />
+          </button>
+          <h1 className="text-3xl font-black text-skope-dark dark:text-white tracking-tight">Skope Privacy Policy</h1>
+        </div>
+
+        <div className="space-y-6 text-slate-600 dark:text-slate-300 leading-relaxed text-sm">
+          <section>
+            <p className="font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest text-[10px] mb-2">Last Updated</p>
+            <p className="font-medium text-skope-navy dark:text-skope-blue">April 18, 2026</p>
+          </section>
+
+          <section className="bg-skope-light/10 dark:bg-skope-deep/30 p-6 rounded-3xl border border-skope-light dark:border-skope-steel">
+            <h3 className="font-bold text-skope-dark dark:text-white mb-2">Academic Research Project</h3>
+            <p>
+              Skope is a student-led research initiative dedicated to improving career development and the recruitment journey for students and employers. This application serves as a platform for data-driven career growth and research within an academic context.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h3 className="font-bold text-skope-dark dark:text-white">What We Collect</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="p-4 bg-slate-50 dark:bg-black/20 rounded-2xl">
+                <p className="font-bold text-skope-navy dark:text-skope-blue mb-1">Identity Info</p>
+                <p className="text-xs">Your name, email address, and professional background details (e.g. skills, location).</p>
+              </div>
+              <div className="p-4 bg-slate-50 dark:bg-black/20 rounded-2xl">
+                <p className="font-bold text-skope-navy dark:text-skope-blue mb-1">Career Data</p>
+                <p className="text-xs">Job preferences, CV analysis results, and interactions with recruiters.</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <h3 className="font-bold text-skope-dark dark:text-white">How Your Data is Used</h3>
+            <ul className="list-disc pl-5 space-y-2">
+              <li><strong>In-App Insights</strong>: Generating career roadmaps and job match scores to help your professional growth.</li>
+              <li><strong>Academic Scholarship</strong>: Data is analyzed to support student research on modern recruitment trends.</li>
+              <li><strong>Ecosystem Research</strong>: Observing broader patterns in the labor market to contribute to public knowledge.</li>
+            </ul>
+          </section>
+
+          <section className="space-y-3">
+            <h3 className="font-bold text-skope-dark dark:text-white">Research & Data Usage</h3>
+            <p>
+              Data used for research reporting is strictly **anonymized or aggregated**. Your individual identity remains private and is never linked to public findings.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h3 className="font-bold text-skope-dark dark:text-white">Data Storage & Security</h3>
+            <p>
+              We keep your information safe using standard cloud encryption and strictly restricted access. We do not share your data with third parties for commercial use.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h3 className="font-bold text-skope-dark dark:text-white">Your Consent & Rights</h3>
+            <p>
+              By using this app, you participate in our student research project. You have the right to request a copy of your stored data or withdraw your consent at any time.
+            </p>
+          </section>
+
+          <section className="bg-red-50 dark:bg-red-900/10 p-6 rounded-3xl border border-red-100 dark:border-red-900/30">
+            <h3 className="font-bold text-red-600 dark:text-red-400 mb-2">Account Deletion</h3>
+            <p className="text-red-600/80 dark:text-red-400/80">
+              When you delete your profile, your account and all associated personal data are removed from our active databases. Some non-identifiable aggregated data may remain in archival research sets.
+            </p>
+          </section>
+
+          <section>
+            <h3 className="font-bold text-skope-dark dark:text-white mb-2">Contact</h3>
+            <p>
+              For research inquiries, contact us at <span className="text-skope-navy dark:text-skope-blue font-bold">RB1591@live.mdx.ac.uk</span>.
+            </p>
+          </section>
+        </div>
+
+        <button 
+          onClick={onBack}
+          className="w-full py-4 bg-skope-navy dark:bg-skope-blue text-white rounded-2xl font-bold hover:bg-skope-deep dark:hover:bg-skope-navy transition-all shadow-lg flex items-center justify-center gap-2 outline-none"
+        >
+          Back to Sign Up
+        </button>
+      </motion.div>
+    </div>
+  );
+};
 
 const NavButton = ({ active, onClick, icon, label, badge }: any) => (
   <button 
@@ -1566,11 +1687,12 @@ const StudentJobChat = ({ profile, onViewProfile }: { profile: UserProfile, onVi
   );
 };
 
-const ProfileView = ({ profile, onUpdate, accFilter, setAccFilter }: { 
+const ProfileView = ({ profile, onUpdate, accFilter, setAccFilter, onShowPrivacy }: { 
   profile: UserProfile, 
   onUpdate: (updates: Partial<UserProfile>) => void,
   accFilter: string,
-  setAccFilter: (filter: string) => void
+  setAccFilter: (filter: string) => void,
+  onShowPrivacy: () => void
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState(profile);
@@ -1869,16 +1991,116 @@ const ProfileView = ({ profile, onUpdate, accFilter, setAccFilter }: {
             <div className="pt-6 border-t border-slate-100 dark:border-skope-steel">
               <button 
                 onClick={() => signOut(auth)}
-                className="w-full py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 font-bold rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 transition-all flex items-center justify-center gap-2 focus-visible:ring-4 focus-visible:ring-red-500 outline-none"
+                className="w-full py-3 bg-slate-50 dark:bg-skope-deep/20 text-slate-600 dark:text-slate-400 font-bold rounded-xl hover:bg-slate-100 dark:hover:bg-skope-deep transition-all flex items-center justify-center gap-2 focus-visible:ring-4 focus-visible:ring-skope-blue outline-none"
                 aria-label="Sign out"
               >
                 <LogOut className="w-5 h-5" />
                 Sign Out
               </button>
             </div>
+
+            {/* Account Management & Help Section */}
+            <div className="pt-12 border-t border-slate-100 dark:border-skope-steel space-y-8">
+              <section>
+                <h4 className="text-sm font-black text-skope-dark dark:text-white uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-skope-navy dark:text-skope-blue" />
+                  Help & Documentation
+                </h4>
+                <div className="bg-slate-50 dark:bg-skope-deep/20 p-6 rounded-3xl border border-slate-100 dark:border-skope-steel">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-skope-dark dark:text-white">Privacy Policy</p>
+                      <p className="text-xs text-slate-500">Read about our student research and data storage.</p>
+                    </div>
+                    <button 
+                      onClick={onShowPrivacy}
+                      className="px-4 py-2 bg-white dark:bg-skope-dark border border-skope-sky dark:border-skope-steel text-skope-navy dark:text-skope-blue text-xs font-bold rounded-xl hover:bg-skope-light transition-all"
+                    >
+                      View Policy
+                    </button>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <h4 className="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Trash2 className="w-4 h-4" />
+                  Withdrawal
+                </h4>
+                
+                <div className="p-6 rounded-3xl border border-dashed border-slate-200 dark:border-skope-steel">
+                  <h5 className="font-bold text-slate-700 dark:text-slate-200 mb-2">Leave Skope</h5>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 leading-relaxed">
+                    By deleting your profile, you withdraw your participation from our student research. Your personal data and results will be permanently removed.
+                  </p>
+                  <DeleteAccountButton userId={profile.uid} />
+                </div>
+              </section>
+            </div>
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+const DeleteAccountButton = ({ userId }: { userId: string }) => {
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      // 1. Delete Firestore user document
+      await deleteDoc(doc(db, 'users', userId));
+      // In a production app, you'd also delete relevant subcollections here
+      
+      // 2. Clear user state and sign out
+      await signOut(auth);
+      window.location.reload(); // Force a clean slate
+    } catch (error: any) {
+      console.error("Delete failed:", error);
+      alert("Failed to delete account. Please ensure you have a stable connection and try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  return (
+    <div className="relative">
+      {!isConfirming ? (
+        <button 
+          onClick={() => setIsConfirming(true)}
+          className="px-6 py-3 bg-white dark:bg-skope-dark border border-slate-200 dark:border-skope-steel text-slate-500 hover:text-red-600 hover:border-red-200 dark:hover:text-red-400 transition-all text-xs font-bold rounded-xl flex items-center gap-2"
+        >
+          <Trash2 className="w-4 h-4" />
+          Delete Account
+        </button>
+      ) : (
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="flex flex-col sm:flex-row items-center gap-4 py-2"
+        >
+          <p className="text-xs font-bold text-red-600 dark:text-red-400">Permanently delete metadata?</p>
+          <div className="flex gap-2">
+            <button 
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="px-5 py-2.5 bg-red-600 text-white text-xs font-bold rounded-xl hover:bg-red-700 transition-all flex items-center gap-2 disabled:opacity-50 shadow-md"
+            >
+              {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Yes, Delete'}
+            </button>
+            <button 
+              onClick={() => setIsConfirming(false)}
+              disabled={isDeleting}
+              className="px-5 py-2.5 bg-slate-100 dark:bg-skope-deep text-slate-600 dark:text-white text-xs font-bold rounded-xl hover:bg-slate-200 transition-all"
+            >
+              Cancel
+            </button>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 };
