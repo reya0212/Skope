@@ -56,6 +56,7 @@ import {
   CheckCircle2,
   Trash2,
   X,
+  Pencil,
   GraduationCap,
   Sun,
   Moon,
@@ -2834,6 +2835,8 @@ const JobsList = ({ role, userId, profile, onViewProfile }: { role: UserRole, us
   const [isMatching, setIsMatching] = useState(false);
   const [showInterview, setShowInterview] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingJob, setEditingJob] = useState<Job | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [showApplyForm, setShowApplyForm] = useState(false);
   const [applyFormData, setApplyFormData] = useState({
     name: '',
@@ -2939,6 +2942,27 @@ const JobsList = ({ role, userId, profile, onViewProfile }: { role: UserRole, us
       console.error("Application failed", error);
     } finally {
       setIsApplying(null);
+    }
+  };
+
+  const handleUpdateJob = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingJob) return;
+    setIsUpdating(true);
+    try {
+      await updateDoc(doc(db, 'jobs', editingJob.id), {
+        title: editingJob.title,
+        company: editingJob.company,
+        location: editingJob.location,
+        description: editingJob.description,
+        applicationLink: editingJob.applicationLink || '',
+        companyLogo: editingJob.companyLogo || ''
+      });
+      setEditingJob(null);
+    } catch (error) {
+      console.error("Failed to update job", error);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -3325,6 +3349,112 @@ const JobsList = ({ role, userId, profile, onViewProfile }: { role: UserRole, us
         </div>
       </div>
       {filteredJobs.length === 0 && <p className="text-slate-400 dark:text-slate-500 italic">No jobs found.</p>}
+      
+      <AnimatePresence>
+        {editingJob && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white dark:bg-skope-dark w-full max-w-2xl rounded-3xl shadow-2xl border border-skope-light dark:border-skope-steel overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-6 border-b border-skope-light dark:border-skope-steel flex items-center justify-between bg-slate-50 dark:bg-skope-deep/20">
+                <h3 className="text-xl font-bold text-skope-dark dark:text-white">Edit Job Posting</h3>
+                <button 
+                  onClick={() => setEditingJob(null)}
+                  className="p-2 hover:bg-slate-200 dark:hover:bg-skope-deep rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <form onSubmit={handleUpdateJob} className="p-8 space-y-4 overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Job Title</label>
+                    <input 
+                      required
+                      value={editingJob.title}
+                      onChange={(e) => setEditingJob({...editingJob, title: e.target.value})}
+                      className="w-full p-4 bg-skope-light/10 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Company Name</label>
+                    <input 
+                      required
+                      value={editingJob.company}
+                      onChange={(e) => setEditingJob({...editingJob, company: e.target.value})}
+                      className="w-full p-4 bg-skope-light/10 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase ml-1">Location</label>
+                  <input 
+                    required
+                    value={editingJob.location}
+                    onChange={(e) => setEditingJob({...editingJob, location: e.target.value})}
+                    placeholder="e.g. Remote, Dubai"
+                    className="w-full p-4 bg-skope-light/10 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-400 uppercase ml-1">Job Description</label>
+                  <textarea 
+                    required
+                    value={editingJob.description}
+                    onChange={(e) => setEditingJob({...editingJob, description: e.target.value})}
+                    className="w-full h-40 p-4 bg-skope-light/10 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white resize-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Company Logo URL</label>
+                    <input 
+                      value={editingJob.companyLogo || ''}
+                      onChange={(e) => setEditingJob({...editingJob, companyLogo: e.target.value})}
+                      placeholder="https://..."
+                      className="w-full p-4 bg-skope-light/10 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-400 uppercase ml-1">Application Link</label>
+                    <input 
+                      value={editingJob.applicationLink || ''}
+                      onChange={(e) => setEditingJob({...editingJob, applicationLink: e.target.value})}
+                      placeholder="https://..."
+                      className="w-full p-4 bg-skope-light/10 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <button 
+                    type="button"
+                    onClick={() => setEditingJob(null)}
+                    className="px-8 py-3 text-slate-500 font-bold hover:bg-slate-100 dark:hover:bg-skope-deep rounded-xl transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    disabled={isUpdating}
+                    className="px-8 py-3 bg-skope-navy dark:bg-skope-blue text-white font-bold rounded-xl hover:bg-skope-deep dark:hover:bg-skope-navy transition-all flex items-center gap-2"
+                  >
+                    {isUpdating && <Loader2 className="w-4 h-4 animate-spin" />}
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {filteredJobs.map(job => {
         const application = applications.find(a => a.jobId === job.id && (role === 'student' ? a.studentId === userId : true));
         const jobApplications = applications.filter(a => a.jobId === job.id);
@@ -3354,16 +3484,28 @@ const JobsList = ({ role, userId, profile, onViewProfile }: { role: UserRole, us
               </div>
               <div className="flex items-center gap-2">
                 {role === 'recruiter' && (
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteJob(job.id);
-                    }}
-                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                    title="Delete Job"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingJob(job);
+                      }}
+                      className="p-2 text-slate-400 hover:text-skope-blue hover:bg-skope-light dark:hover:bg-skope-deep rounded-lg transition-all"
+                      title="Edit Job"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteJob(job.id);
+                      }}
+                      className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                      title="Delete Job"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 )}
                 <span className="text-xs text-slate-400 dark:text-slate-500">{new Date(job.createdAt).toLocaleDateString()}</span>
               </div>
