@@ -66,6 +66,14 @@ export interface Course {
   relevance: string;
 }
 
+export interface JobMatchResult {
+  score: number;
+  analysis: string;
+  tips: string[];
+  tailoringStrategy: string;
+  coverLetterTips: string[];
+}
+
 export interface Job {
   id: string;
   recruiterId: string;

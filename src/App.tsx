@@ -29,7 +29,7 @@ import { auth, db, storage, googleProvider, githubProvider, handleFirestoreError
 import { createUser, signIn, signInWithGoogle, deleteAllUsers, clearUserData } from './authFunctions';
 import CareerRoadmap from './components/CareerRoadmap';
 import { completeRoadmapStep, checkProfileCompletion } from './services/roadmapService';
-import { UserProfile, UserRole, CV, Job, JobApplication } from './types';
+import { UserProfile, UserRole, CV, Job, JobApplication, JobMatchResult } from './types';
 import { analyzeCV, getChatResponse, analyzeJobMatch, getInterviewResponse, FileData } from './services/gemini';
 import { 
   LogOut, 
@@ -2061,7 +2061,7 @@ const StudentView = ({ profile, activeTab, onViewProfile }: { profile: UserProfi
                   <GraduationCap className="w-5 h-5 text-skope-navy dark:text-skope-blue" />
                   AI Recommendations
                 </h3>
-                <div className="prose prose-slate dark:prose-invert max-w-none text-sm leading-relaxed">
+                <div className="prose prose-slate dark:prose-invert max-w-none text-sm leading-relaxed text-justify">
                   <div className="markdown-body">
                     <Markdown>{latestCV.analysis}</Markdown>
                   </div>
@@ -2129,7 +2129,7 @@ const CoursesView = ({ cv, userId }: { cv: CV | null, userId: string }) => {
                 </span>
               </div>
               <h3 className="text-xl font-bold text-skope-dark dark:text-white mb-2">{course.title}</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm mb-6">{course.relevance}</p>
+              <p className="text-slate-600 dark:text-slate-400 text-sm mb-6 text-justify">{course.relevance}</p>
             </div>
             <a 
               href={course.url} 
@@ -2715,7 +2715,7 @@ const JobsList = ({ role, userId, profile, onViewProfile }: { role: UserRole, us
   const [isApplying, setIsApplying] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [latestCV, setLatestCV] = useState<CV | null>(null);
-  const [matchResult, setMatchResult] = useState<{score: number, analysis: string, tips: string[]} | null>(null);
+  const [matchResult, setMatchResult] = useState<JobMatchResult | null>(null);
   const [isMatching, setIsMatching] = useState(false);
   const [showInterview, setShowInterview] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -2938,17 +2938,19 @@ const JobsList = ({ role, userId, profile, onViewProfile }: { role: UserRole, us
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-          <div className="lg:col-span-2 prose prose-slate dark:prose-invert max-w-none">
+        <div className="flex flex-col gap-8 mb-8">
+          <div className="prose prose-slate dark:prose-invert max-w-none">
             <h4 className="text-lg font-bold text-skope-dark dark:text-white mb-4 flex items-center gap-2">
               <FileText className="text-skope-navy dark:text-skope-blue w-5 h-5" /> Job Description
             </h4>
-            <p className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed text-sm">{selectedJob.description}</p>
+            <div className="bg-slate-50 dark:bg-skope-deep/10 p-6 rounded-3xl border border-skope-light dark:border-skope-steel">
+              <p className="text-slate-600 dark:text-slate-400 whitespace-pre-wrap leading-relaxed text-sm text-justify">{selectedJob.description}</p>
+            </div>
           </div>
 
-          <div className="space-y-6">
+          <div className="flex flex-col gap-6">
             {role === 'student' && (
-              <div className="bg-skope-light/10 dark:bg-skope-deep/20 p-6 rounded-3xl border border-skope-light dark:border-skope-steel">
+              <div className="bg-skope-light/10 dark:bg-skope-deep/20 p-6 rounded-3xl border border-skope-light dark:border-skope-steel w-full">
                 <h4 className="text-sm font-bold text-skope-dark dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
                   <Target className="text-skope-navy dark:text-skope-blue w-4 h-4" /> CV Match
                 </h4>
@@ -2969,19 +2971,40 @@ const JobsList = ({ role, userId, profile, onViewProfile }: { role: UserRole, us
                         style={{ width: `${matchResult.score}%` }}
                       ></div>
                     </div>
-                    <div className="text-xs text-slate-600 dark:text-slate-400 markdown-body">
+                    <div className="text-xs text-slate-600 dark:text-slate-400 markdown-body mt-2 text-justify">
                       <Markdown>{matchResult.analysis}</Markdown>
                     </div>
-                    <div className="pt-4 border-t border-slate-200 dark:border-skope-steel">
-                      <p className="text-[0.625rem] font-bold text-slate-400 dark:text-slate-500 uppercase mb-2">Improvement Tips</p>
-                      <ul className="space-y-2">
-                        {matchResult.tips.map((tip, i) => (
-                          <li key={i} className="text-xs text-slate-600 dark:text-slate-400 flex gap-2">
-                            <CheckCircle2 className="w-3 h-3 text-blue-500 dark:text-skope-blue shrink-0 mt-0.5" />
-                            {tip}
-                          </li>
-                        ))}
-                      </ul>
+                    <div className="pt-4 border-t border-slate-200 dark:border-skope-steel grid grid-cols-1 md:grid-cols-3 gap-8">
+                      <div>
+                        <p className="text-[0.625rem] font-bold text-slate-400 dark:text-slate-500 uppercase mb-2">CV Tailoring Strategy</p>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed italic mb-4 text-justify">
+                          {matchResult.tailoringStrategy}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-[0.625rem] font-bold text-slate-400 dark:text-slate-500 uppercase mb-2">Cover Letter Tips</p>
+                        <ul className="space-y-2">
+                          {matchResult.coverLetterTips.map((tip, i) => (
+                            <li key={i} className="text-xs text-blue-600 dark:text-skope-sky flex gap-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0 mt-1.5" />
+                              {tip}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div>
+                        <p className="text-[0.625rem] font-bold text-slate-400 dark:text-slate-500 uppercase mb-2">Quick Improvement Tips</p>
+                        <ul className="space-y-2">
+                          {matchResult.tips.map((tip, i) => (
+                            <li key={i} className="text-xs text-slate-600 dark:text-slate-400 flex gap-2">
+                              <CheckCircle2 className="w-3 h-3 text-green-500 dark:text-green-400 shrink-0 mt-0.5" />
+                              {tip}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -2998,7 +3021,7 @@ const JobsList = ({ role, userId, profile, onViewProfile }: { role: UserRole, us
             )}
 
             {selectedJob.applicationLink && (
-              <div className="p-6 bg-blue-50 dark:bg-skope-deep/20 rounded-3xl border border-blue-100 dark:border-skope-steel">
+              <div className="p-6 bg-blue-50 dark:bg-skope-deep/20 rounded-3xl border border-blue-100 dark:border-skope-steel w-full">
                 <h4 className="text-xs font-bold text-blue-900 dark:text-skope-blue uppercase tracking-wider mb-2">External Link</h4>
                 <a 
                   href={selectedJob.applicationLink} 

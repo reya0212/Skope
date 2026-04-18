@@ -32,17 +32,22 @@ export async function analyzeCV(cvText: string | null, fileData: FileData | null
       The user is targeting these specific roles: ${desiredJobs.join(", ") || "General career growth"}.
       
       CRITICAL INSTRUCTIONS:
-      1. For EACH career path listed above, provide specific, tailored insights. If multiple paths are chosen, compare how the CV performs for each.
-      2. Identify specific missing keywords for each role.
-      3. Quantify achievements where possible and suggest concrete improvements to the phrasing of existing experience.
-      4. Reference specific sections or bullet points from the user's CV in your analysis to make it truly personalized.
+      1. For EACH career path listed above, provide specific, tailored insights.
+      2. **Skill Demand Analyzer**: Identify specific skills employers want for these roles and how the CV currently matches or misses them.
+      3. **Bullet Point Optimizer**: Critique existing bullet points and provide rewritten, high-impact alternatives using strong action verbs.
+      4. **ATS Compatibility Strategy**: Evaluate if the CV will pass modern ATS scanners (formatting, fonts, keywords).
+      5. **Formatting & Design Critique**: Assess the visual hierarchy, professional layout, and readability.
+      6. **Language, Tone & Professionalism**: Identify issues with tone, voice, or linguistic consistency.
+      7. **Impact Analyzer**: Review for "Measurable Achievements". Use the 'X per Y resulting in Z' formula to suggest improvements.
+      8. **Region-Specific Trends**: Mention current skill demand insights for these roles (assume globally trending unless context suggests otherwise).
+      9. Reference specific sections or bullet points from the user's CV in your analysis to make it truly personalized.
       
       Current Year: 2026.
       
       Provide:
-      1. A detailed Markdown analysis of strengths, weaknesses, and specific "quick wins" to improve the CV's impact immediately, segmented by the chosen career paths.
+      1. A detailed Markdown analysis containing the sections above, plus strengths, weaknesses, and specific "quick wins".
       2. An ATS Score (0-100) based on industry standards for the desired roles.
-      3. A list of 3-5 certified online courses (with real URLs from Coursera, Udemy, LinkedIn Learning, etc.) that would bridge specific skill gaps identified in this CV.
+      3. A list of 3-5 certified online courses (with real URLs) to bridge identified skill gaps.
       
       Return the response in JSON format.
   `;
@@ -137,7 +142,7 @@ export async function analyzeJobMatch(cvText: string | null, fileData: FileData 
   }
 
   const prompt = `
-      You are an expert recruiter. Compare the provided CV with the Job Description.
+      You are an expert recruiter and career consultant. Compare the provided CV with the Job Description to provide deep tailoring insights.
       
       Job Title: ${jobTitle}
       Job Description: ${jobDescription}
@@ -146,8 +151,17 @@ export async function analyzeJobMatch(cvText: string | null, fileData: FileData 
       1. A match score (0-100).
       2. A brief Markdown analysis of why they match and what is missing.
       3. 3 specific tips to improve the CV for THIS specific job.
+      4. **CV Tailoring Strategy**: Specific advice on which sections to emphasize or reorder for this role.
+      5. **Cover Letter Strategy**: Key themes and "hooks" from the user's background to include in a cover letter for this specific job.
       
-      Return as JSON.
+      Return as JSON with the following schema:
+      {
+        "score": number, 
+        "analysis": string, 
+        "tips": string[], 
+        "tailoringStrategy": string, 
+        "coverLetterTips": string[]
+      }
   `;
   
   parts.push({ text: prompt });
@@ -163,9 +177,11 @@ export async function analyzeJobMatch(cvText: string | null, fileData: FileData 
           properties: {
             score: { type: Type.NUMBER },
             analysis: { type: Type.STRING },
-            tips: { type: Type.ARRAY, items: { type: Type.STRING } }
+            tips: { type: Type.ARRAY, items: { type: Type.STRING } },
+            tailoringStrategy: { type: Type.STRING },
+            coverLetterTips: { type: Type.ARRAY, items: { type: Type.STRING } }
           },
-          required: ["score", "analysis", "tips"]
+          required: ["score", "analysis", "tips", "tailoringStrategy", "coverLetterTips"]
         }
       }
     });
