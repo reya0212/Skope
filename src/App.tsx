@@ -1015,27 +1015,38 @@ export default function App() {
   }, [accessibilityFilter]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      // Add a small artificial delay to show the splash screen
+    let profileUnsubscribe: (() => void) | null = null;
+    
+    const authUnsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       const splashDelay = new Promise(resolve => setTimeout(resolve, 1500));
       
       if (firebaseUser) {
         setUser(firebaseUser);
         const docRef = doc(db, 'users', firebaseUser.uid);
-        const docSnap = await getDoc(docRef);
         
-        if (docSnap.exists()) {
-          setProfile(docSnap.data() as UserProfile);
-        }
+        // Use a real-time listener for the profile
+        profileUnsubscribe = onSnapshot(docRef, (docSnap) => {
+          if (docSnap.exists()) {
+            setProfile(docSnap.data() as UserProfile);
+          }
+        });
       } else {
         setUser(null);
         setProfile(null);
+        if (profileUnsubscribe) {
+          profileUnsubscribe();
+          profileUnsubscribe = null;
+        }
       }
       
       await splashDelay;
       setLoading(false);
     });
-    return unsubscribe;
+
+    return () => {
+      authUnsubscribe();
+      if (profileUnsubscribe) profileUnsubscribe();
+    };
   }, []);
 
   const handleRoleSelect = async (role: UserRole, initialData?: Partial<UserProfile>) => {
@@ -1889,13 +1900,19 @@ const StudentView = ({ profile, activeTab, onViewProfile }: { profile: UserProfi
     setIsUpdatingJobs(true);
     try {
       const currentJobs = profile.desiredJobs || [];
-      if (!currentJobs.includes(newJob.trim())) {
+      const normalizedNewJob = newJob.trim();
+      const jobExists = currentJobs.some(j => j.toLowerCase() === normalizedNewJob.toLowerCase());
+      
+      if (!jobExists) {
         await updateDoc(doc(db, 'users', profile.uid), {
-          desiredJobs: [...currentJobs, newJob.trim()]
+          desiredJobs: [...currentJobs, normalizedNewJob]
         });
         await completeRoadmapStep(profile.uid, 'career_paths_set');
+        setNewJob('');
+      } else {
+        // Clear input anyway if it already exists to show it was "processed"
+        setNewJob('');
       }
-      setNewJob('');
     } catch (error) {
       console.error("Failed to add job", error);
     } finally {
