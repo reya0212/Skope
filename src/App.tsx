@@ -69,6 +69,70 @@ import Markdown from 'react-markdown';
 
 // --- Components ---
 
+const FileUpload = ({ 
+  onUpload, 
+  id, 
+  label, 
+  icon: Icon = Upload, 
+  accept = "image/*", 
+  className = "" 
+}: { 
+  onUpload: (url: string) => void, 
+  id: string, 
+  label: string, 
+  icon?: any,
+  accept?: string,
+  className?: string
+}) => {
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      const storageRef = ref(storage, `uploads/${Date.now()}-${file.name}`);
+      await uploadBytes(storageRef, file);
+      const url = await getDownloadURL(storageRef);
+      onUpload(url);
+    } catch (error: any) {
+      console.error("Upload failed:", error);
+      let errorMessage = "Upload failed. Please try again.";
+      if (error.code === 'storage/unauthorized') {
+        errorMessage = "Upload failed: Unauthorized. Please ensure you're signed in and Firebase Storage is enabled with appropriate rules.";
+      } else if (error.code === 'storage/canceled') {
+        errorMessage = "Upload was canceled.";
+      } else if (error.code === 'storage/unknown') {
+        errorMessage = "Upload failed: Unknown error. Check your internet connection or Firebase console.";
+      }
+      alert(errorMessage);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className={className}>
+      <label htmlFor={id} className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{label}</label>
+      <div className="relative group">
+        <input 
+          id={id}
+          type="file" 
+          accept={accept}
+          onChange={handleFileChange}
+          className="absolute inset-0 opacity-0 cursor-pointer z-10"
+          disabled={isUploading}
+        />
+        <div className="w-full p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl flex items-center gap-3 text-slate-500 dark:text-slate-400 group-hover:border-skope-blue transition-all">
+          {isUploading ? <Loader2 className="w-4 h-4 animate-spin text-skope-blue" /> : <Icon className="w-4 h-4" />}
+          <span className="text-sm">{isUploading ? 'Uploading...' : 'Choose file...'}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const CircularATSScore = ({ score }: { score: number }) => {
   const getColor = (s: number) => {
     if (s <= 40) return '#ef4444'; // Red
@@ -617,6 +681,9 @@ const RoleSelection = ({ onSelect, existingProfile }: { onSelect: (role: UserRol
   );
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(existingProfile?.role || null);
   
+  // Photo/Logo fields
+  const [photoURL, setPhotoURL] = useState(existingProfile?.photoURL || '');
+
   // Recruiter fields
   const [companyName, setCompanyName] = useState(existingProfile?.companyName || '');
   const [companyLogo, setCompanyLogo] = useState(existingProfile?.companyLogo || '');
@@ -653,9 +720,19 @@ const RoleSelection = ({ onSelect, existingProfile }: { onSelect: (role: UserRol
               birthday: studentDob, 
               age: parseInt(studentAge), 
               location: studentLocation,
-              phone: studentPhone
+              phone: studentPhone,
+              photoURL: photoURL
             });
           }} className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-400 uppercase ml-4">Profile Picture URL</label>
+              <input 
+                value={photoURL}
+                onChange={(e) => setPhotoURL(e.target.value)}
+                placeholder="https://example.com/photo.jpg"
+                className="w-full p-4 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-2xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+              />
+            </div>
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-400 uppercase ml-4">Full Name</label>
               <input 
@@ -746,8 +823,17 @@ const RoleSelection = ({ onSelect, existingProfile }: { onSelect: (role: UserRol
           </div>
           <form onSubmit={(e) => {
             e.preventDefault();
-            onSelect('recruiter', { companyName, companyLogo, companyDescription });
+            onSelect('recruiter', { companyName, companyLogo, companyDescription, photoURL });
           }} className="space-y-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-slate-400 uppercase ml-4">Your Profile Picture URL</label>
+              <input 
+                value={photoURL}
+                onChange={(e) => setPhotoURL(e.target.value)}
+                placeholder="https://example.com/photo.jpg"
+                className="w-full p-4 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-2xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+              />
+            </div>
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-400 uppercase ml-4">Company Name</label>
               <input 
@@ -761,10 +847,9 @@ const RoleSelection = ({ onSelect, existingProfile }: { onSelect: (role: UserRol
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-400 uppercase ml-4">Company Logo URL</label>
               <input 
-                required
                 value={companyLogo}
                 onChange={(e) => setCompanyLogo(e.target.value)}
-                placeholder="https://..."
+                placeholder="https://example.com/logo.png"
                 className="w-full p-4 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-2xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
               />
             </div>
@@ -1029,7 +1114,7 @@ export default function App() {
       return !!(p.displayName && p.birthday && p.age && p.location && p.phone);
     }
     if (p.role === 'recruiter') {
-      return !!(p.companyName && p.companyLogo && p.companyDescription);
+      return !!(p.companyName && p.companyDescription);
     }
     return true;
   };
@@ -1403,14 +1488,23 @@ const StudentJobChat = ({ profile, onViewProfile }: { profile: UserProfile, onVi
                 <button
                   key={app.id}
                   onClick={() => setSelectedApp(app)}
-                  className={`w-full text-left p-4 rounded-2xl border transition-all ${
+                  className={`w-full text-left p-4 rounded-2xl border transition-all flex gap-3 items-center ${
                     selectedApp?.id === app.id
                       ? 'bg-skope-navy dark:bg-skope-blue border-transparent text-white shadow-lg'
                       : 'bg-white dark:bg-skope-dark border-skope-light dark:border-skope-steel text-skope-dark dark:text-white hover:border-skope-blue'
                   }`}
                 >
-                  <h4 className="font-bold truncate">{job?.title || 'Loading...'}</h4>
-                  <p className={`text-xs ${selectedApp?.id === app.id ? 'text-skope-sky' : 'text-slate-500'}`}>{job?.company}</p>
+                  <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-skope-deep flex items-center justify-center shrink-0 overflow-hidden border border-slate-200 dark:border-skope-steel">
+                    {job?.companyLogo ? (
+                      <img src={job.companyLogo} alt={job.company} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                    ) : (
+                      <Briefcase className="w-5 h-5 text-slate-400" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h4 className="font-bold truncate">{job?.title || 'Loading...'}</h4>
+                    <p className={`text-xs truncate ${selectedApp?.id === app.id ? 'text-skope-sky' : 'text-slate-500'}`}>{job?.company}</p>
+                  </div>
                 </button>
               );
             })
@@ -1589,6 +1683,7 @@ const ProfileView = ({ profile, onUpdate, accFilter, setAccFilter }: {
                     id="edit-company-logo"
                     value={formData.companyLogo || ''}
                     onChange={(e) => setFormData({...formData, companyLogo: e.target.value})}
+                    placeholder="https://example.com/logo.png"
                     className="w-full p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
                   />
                 </div>
@@ -2303,31 +2398,42 @@ const ApplicantsView = ({ recruiterId, onViewProfile }: { recruiterId: string, o
                     : 'bg-white dark:bg-skope-dark border-skope-light dark:border-skope-steel text-skope-dark dark:text-white hover:border-skope-blue'
                 }`}
               >
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-bold text-lg">{app.studentName}</h4>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onViewProfile(app.studentId);
-                      }}
-                      className={`p-1 rounded-lg transition-colors ${selectedApp?.id === app.id ? 'hover:bg-white/20' : 'hover:bg-slate-100 dark:hover:bg-skope-deep'}`}
-                      title="View Profile"
-                    >
-                      <UserIcon className="w-4 h-4" />
-                    </button>
+                <div className="flex gap-4 items-start">
+                  <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-skope-deep flex items-center justify-center shrink-0 overflow-hidden border border-slate-200 dark:border-skope-steel">
+                    {jobs.find(j => j.id === app.jobId)?.companyLogo ? (
+                      <img src={jobs.find(j => j.id === app.jobId)?.companyLogo} alt="Logo" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                    ) : (
+                      <Briefcase className="w-6 h-6 text-slate-400" />
+                    )}
                   </div>
-                  <span className={`text-[0.625rem] font-black uppercase px-2 py-1 rounded-md ${
-                    app.status === 'accepted' ? 'bg-green-500/20 text-green-400' :
-                    app.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
-                    'bg-slate-500/20 text-slate-400'
-                  }`}>
-                    {app.status}
-                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-lg">{app.studentName}</h4>
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onViewProfile(app.studentId);
+                          }}
+                          className={`p-1 rounded-lg transition-colors ${selectedApp?.id === app.id ? 'hover:bg-white/20' : 'hover:bg-slate-100 dark:hover:bg-skope-deep'}`}
+                          title="View Profile"
+                        >
+                          <UserIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <span className={`text-[0.625rem] font-black uppercase px-2 py-1 rounded-md ${
+                        app.status === 'accepted' ? 'bg-green-500/20 text-green-400' :
+                        app.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
+                        'bg-slate-500/20 text-slate-400'
+                      }`}>
+                        {app.status}
+                      </span>
+                    </div>
+                    <p className={`text-xs ${selectedApp?.id === app.id ? 'text-skope-sky' : 'text-slate-500'}`}>
+                      Applied for: {jobs.find(j => j.id === app.jobId)?.title || 'Unknown Job'}
+                    </p>
+                  </div>
                 </div>
-                <p className={`text-xs ${selectedApp?.id === app.id ? 'text-skope-sky' : 'text-slate-500'}`}>
-                  Applied for: {jobs.find(j => j.id === app.jobId)?.title || 'Unknown Job'}
-                </p>
               </button>
             ))
           )}
@@ -2438,12 +2544,14 @@ const RecruiterView = ({ profile, activeTab, onViewProfile }: { profile: UserPro
   const [location, setLocation] = useState(profile.location || '');
   const [description, setDescription] = useState('');
   const [applicationLink, setApplicationLink] = useState('');
+  const [jobLogo, setJobLogo] = useState(profile.companyLogo || '');
   const [isPosting, setIsPosting] = useState(false);
 
   useEffect(() => {
     if (profile.companyName) setCompany(profile.companyName);
     if (profile.location) setLocation(profile.location);
-  }, [profile.companyName, profile.location]);
+    if (profile.companyLogo) setJobLogo(profile.companyLogo);
+  }, [profile.companyName, profile.location, profile.companyLogo]);
 
   const handlePost = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2453,7 +2561,7 @@ const RecruiterView = ({ profile, activeTab, onViewProfile }: { profile: UserPro
         recruiterId: profile.uid,
         title,
         company: company || profile.companyName || '',
-        companyLogo: profile.companyLogo || '',
+        companyLogo: jobLogo || profile.companyLogo || '',
         location,
         description,
         applicationLink,
@@ -2542,15 +2650,27 @@ const RecruiterView = ({ profile, activeTab, onViewProfile }: { profile: UserPro
                 className="w-full h-32 p-4 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white resize-none"
               />
             </div>
-            <div className="space-y-1">
-              <label htmlFor="app-link" className="sr-only">Application Link</label>
-              <input 
-                id="app-link"
-                value={applicationLink}
-                onChange={(e) => setApplicationLink(e.target.value)}
-                placeholder="Application Link (Optional)"
-                className="w-full p-4 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label htmlFor="job-logo" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Job/Company Logo URL</label>
+                <input 
+                  id="job-logo"
+                  value={jobLogo}
+                  onChange={(e) => setJobLogo(e.target.value)}
+                  placeholder="https://example.com/logo.png"
+                  className="w-full p-4 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white text-sm"
+                />
+              </div>
+              <div className="space-y-1">
+                <label htmlFor="app-link" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Application Link (Optional)</label>
+                <input 
+                  id="app-link"
+                  value={applicationLink}
+                  onChange={(e) => setApplicationLink(e.target.value)}
+                  placeholder="https://example.com/apply"
+                  className="w-full p-4 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+                />
+              </div>
             </div>
             <div className="flex justify-end gap-3">
               <button 
