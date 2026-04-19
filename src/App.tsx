@@ -727,25 +727,12 @@ const RoleSelection = ({ onSelect, existingProfile }: { onSelect: (role: UserRol
   const [studentDob, setStudentDob] = useState(existingProfile?.birthday || '');
   const [studentAge, setStudentAge] = useState(existingProfile?.age?.toString() || '');
   const [studentLocation, setStudentLocation] = useState(existingProfile?.location || '');
-  const [studentPhone, setStudentPhone] = useState(existingProfile?.phone || '');
-  const [isVerifyingPhone, setIsVerifyingPhone] = useState(false);
-  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
   const [dobError, setDobError] = useState('');
 
   const handleDobChange = (val: string) => {
     setStudentDob(val);
     const age = calculateAge(val);
     setStudentAge(age);
-  };
-
-  const handleVerifyPhone = () => {
-    if (!studentPhone) return;
-    setIsVerifyingPhone(true);
-    // Simulate verification
-    setTimeout(() => {
-      setIsVerifyingPhone(false);
-      setIsPhoneVerified(true);
-    }, 1500);
   };
 
   if (step === 'student_details') {
@@ -772,7 +759,6 @@ const RoleSelection = ({ onSelect, existingProfile }: { onSelect: (role: UserRol
               birthday: studentDob, 
               age: parseInt(studentAge), 
               location: studentLocation,
-              phone: studentPhone,
               photoURL: photoURL
             });
           }} className="space-y-4">
@@ -828,33 +814,6 @@ const RoleSelection = ({ onSelect, existingProfile }: { onSelect: (role: UserRol
                 placeholder="City, Country"
                 className="w-full p-4 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-2xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
               />
-            </div>
-            <div className="space-y-1">
-              <div className="flex justify-between items-center ml-4 mr-4">
-                <label className="text-xs font-bold text-slate-400 uppercase">Phone Number <span className="text-[10px] font-normal lowercase">(Optional)</span></label>
-                {isPhoneVerified && <span className="text-[10px] text-green-500 font-bold flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Verified</span>}
-              </div>
-              <div className="flex gap-2">
-                <input 
-                  value={studentPhone}
-                  onChange={(e) => {
-                    setStudentPhone(e.target.value);
-                    setIsPhoneVerified(false);
-                  }}
-                  placeholder="+1 234 567 890"
-                  className="flex-1 p-4 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-2xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
-                />
-                {studentPhone && !isPhoneVerified && (
-                  <button 
-                    type="button"
-                    onClick={handleVerifyPhone}
-                    disabled={isVerifyingPhone}
-                    className="px-4 bg-skope-navy dark:bg-skope-blue text-white rounded-2xl text-xs font-bold hover:bg-skope-deep transition-all disabled:opacity-50"
-                  >
-                    {isVerifyingPhone ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Verify'}
-                  </button>
-                )}
-              </div>
             </div>
             <button 
               type="submit"
@@ -1837,16 +1796,6 @@ const ProfileView = ({ profile, onUpdate, accFilter, setAccFilter, onShowPrivacy
                   />
                 </div>
                 <div>
-                  <label htmlFor="edit-phone" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone Number <span className="text-[10px] font-normal lowercase">(Optional)</span></label>
-                  <input 
-                    id="edit-phone"
-                    value={formData.phone || ''}
-                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                    placeholder="+1 234 567 890"
-                    className="w-full p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
-                  />
-                </div>
-                <div>
                   <label htmlFor="edit-photo" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Profile Picture URL</label>
                   <input 
                     id="edit-photo"
@@ -1962,10 +1911,6 @@ const ProfileView = ({ profile, onUpdate, accFilter, setAccFilter, onShowPrivacy
                 <div className="bg-skope-light/10 dark:bg-skope-deep p-4 rounded-2xl">
                   <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-1">Location</p>
                   <p className="text-slate-900 dark:text-white font-medium">{profile.location || 'Not set'}</p>
-                </div>
-                <div className="bg-skope-light/10 dark:bg-skope-deep p-4 rounded-2xl">
-                  <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-1">Phone</p>
-                  <p className="text-slate-900 dark:text-white font-medium">{profile.phone || 'Not set'}</p>
                 </div>
               </div>
             )}
@@ -3168,6 +3113,59 @@ const JobsList = ({ role, userId, profile, onViewProfile }: { role: UserRole, us
     email: '',
     cvText: ''
   });
+  const [verificationStep, setVerificationStep] = useState<'idle' | 'sending' | 'sent' | 'verifying' | 'verified'>('idle');
+  const [verificationCode, setVerificationCode] = useState('');
+  const [smsError, setSmsError] = useState('');
+
+  const handleSendSMS = async () => {
+    if (!applyFormData.phone) return;
+    setVerificationStep('sending');
+    setSmsError('');
+    try {
+      const res = await fetch("/api/phone/send-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: applyFormData.phone })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setVerificationStep('sent');
+        if (data.mock && data.code) {
+          console.log("MOCK CODE:", data.code);
+          alert(`Development Mode: SMS sent to ${applyFormData.phone}. Code: ${data.code} (Check logs for real use)`);
+        }
+      } else {
+        setSmsError(data.error || "Failed to send SMS");
+        setVerificationStep('idle');
+      }
+    } catch (err) {
+      setSmsError("Network error sending SMS");
+      setVerificationStep('idle');
+    }
+  };
+
+  const handleVerifyCode = async () => {
+    if (!verificationCode) return;
+    setVerificationStep('verifying');
+    setSmsError('');
+    try {
+      const res = await fetch("/api/phone/verify-code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phoneNumber: applyFormData.phone, code: verificationCode })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setVerificationStep('verified');
+      } else {
+        setSmsError(data.error || "Invalid code");
+        setVerificationStep('sent');
+      }
+    } catch (err) {
+      setSmsError("Network error verifying code");
+      setVerificationStep('sent');
+    }
+  };
 
   useEffect(() => {
     if (role === 'student' && userId) {
@@ -3236,6 +3234,12 @@ const JobsList = ({ role, userId, profile, onViewProfile }: { role: UserRole, us
   const handleApply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userId || isApplying || !selectedJob) return;
+    
+    if (verificationStep !== 'verified' && applyFormData.phone) {
+      setSmsError("Please verify your phone number before submitting.");
+      return;
+    }
+
     setIsApplying(selectedJob.id);
     try {
       await addDoc(collection(db, 'job_applications'), {
@@ -3525,13 +3529,72 @@ const JobsList = ({ role, userId, profile, onViewProfile }: { role: UserRole, us
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-400 uppercase">Phone Number</label>
-                  <input 
-                    required
-                    value={applyFormData.phone}
-                    onChange={(e) => setApplyFormData({...applyFormData, phone: e.target.value})}
-                    className="w-full p-3 bg-white dark:bg-skope-dark border border-skope-light dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white text-sm"
-                  />
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold text-slate-400 uppercase">Phone Number</label>
+                    {verificationStep === 'verified' && <span className="text-[10px] text-green-500 font-bold flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Verified</span>}
+                  </div>
+                  <div className="flex gap-2">
+                    <input 
+                      required
+                      disabled={verificationStep === 'verified' || verificationStep === 'sending' || verificationStep === 'sent' || verificationStep === 'verifying'}
+                      value={applyFormData.phone}
+                      onChange={(e) => {
+                        setApplyFormData({...applyFormData, phone: e.target.value});
+                        setVerificationStep('idle');
+                      }}
+                      placeholder="+1234567890"
+                      className="flex-1 p-3 bg-white dark:bg-skope-dark border border-skope-light dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white text-sm disabled:opacity-50"
+                    />
+                    {verificationStep === 'idle' && applyFormData.phone && (
+                      <button 
+                        type="button"
+                        onClick={handleSendSMS}
+                        className="px-4 bg-skope-navy dark:bg-skope-blue text-white rounded-xl font-bold hover:opacity-90 transition-all text-xs"
+                      >
+                        Verify
+                      </button>
+                    )}
+                    {(verificationStep === 'sending' || verificationStep === 'verifying') && (
+                      <div className="px-4 flex items-center justify-center bg-slate-100 dark:bg-skope-deep rounded-xl">
+                        <Loader2 className="w-4 h-4 animate-spin text-skope-blue" />
+                      </div>
+                    )}
+                    {verificationStep === 'verified' && (
+                      <button 
+                        type="button"
+                        onClick={() => setVerificationStep('idle')}
+                        className="px-4 text-slate-400 font-bold text-xs hover:text-skope-blue whitespace-nowrap"
+                      >
+                        Change
+                      </button>
+                    )}
+                  </div>
+                  {verificationStep === 'sent' && (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="mt-2 p-3 bg-blue-50 dark:bg-skope-blue/10 rounded-xl border border-blue-200 dark:border-skope-blue/30"
+                    >
+                      <p className="text-[10px] text-skope-navy dark:text-skope-blue font-bold mb-2">Enter code sent to your phone:</p>
+                      <div className="flex gap-2">
+                        <input 
+                          value={verificationCode}
+                          onChange={(e) => setVerificationCode(e.target.value)}
+                          placeholder="XXXXXX"
+                          maxLength={6}
+                          className="flex-1 p-2 bg-white dark:bg-skope-dark border border-skope-blue rounded-lg outline-none text-center font-bold tracking-widest dark:text-white text-sm"
+                        />
+                        <button 
+                          type="button"
+                          onClick={handleVerifyCode}
+                          className="px-4 bg-skope-blue text-white rounded-lg font-bold hover:brightness-110 transition-all text-xs"
+                        >
+                          Confirm
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                  {smsError && <p className="text-[10px] text-red-500 font-bold mt-1">{smsError}</p>}
                 </div>
                 <div className="space-y-1 col-span-full">
                   <label className="text-xs font-bold text-slate-400 uppercase">Email Address</label>

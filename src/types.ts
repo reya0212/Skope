@@ -12,6 +12,7 @@ export interface UserProfile {
   location?: string;
   age?: number;
   phone?: string;
+  phoneVerified?: boolean;
   photoURL?: string;
   // Recruiter specific
   companyName?: string;

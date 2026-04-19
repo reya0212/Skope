@@ -16,6 +16,9 @@ async function startServer() {
   const apiKey = process.env.GEMINI_API_KEY;
   const genAI = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
+  // SMS Verification Store (In-memory for demo/research purposes)
+  const verificationCodes = new Map<string, string>();
+
   // Gemini Proxy Route
   app.post("/api/gemini", async (req, res) => {
     if (!genAI) {
@@ -49,6 +52,57 @@ async function startServer() {
       console.error("Gemini server error:", error);
       res.status(500).json({ error: error.message });
     }
+  });
+
+  // SMS Routes
+  app.post("/api/phone/send-code", async (req, res) => {
+    const { phoneNumber } = req.body;
+    if (!phoneNumber) return res.status(400).json({ error: "Phone number required" });
+
+    // Generate 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    verificationCodes.set(phoneNumber, code);
+
+    const sid = process.env.TWILIO_SID;
+    const token = process.env.TWILIO_AUTH_TOKEN;
+    const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
+
+    if (sid && token && twilioPhone) {
+      try {
+        const { default: twilio } = await import("twilio");
+        const client = twilio(sid, token);
+        await client.messages.create({
+          body: `Your Skope verification code is: ${code}`,
+          from: twilioPhone,
+          to: phoneNumber
+        });
+        return res.json({ success: true, message: "Verification code sent via SMS" });
+      } catch (err: any) {
+        console.error("Twilio error:", err);
+        return res.status(500).json({ error: `Failed to send SMS: ${err.message}` });
+      }
+    } else {
+      // Development Fallback / Mock
+      console.log(`[SMS MOCK] To: ${phoneNumber}, Code: ${code}`);
+      return res.json({ 
+        success: true, 
+        message: "Development Mode: Code sent to server logs (check terminal)",
+        mock: true,
+        code: process.env.NODE_ENV !== 'production' ? code : undefined // Only show in non-prod if keys missing
+      });
+    }
+  });
+
+  app.post("/api/phone/verify-code", async (req, res) => {
+    const { phoneNumber, code } = req.body;
+    const storedCode = verificationCodes.get(phoneNumber);
+
+    if (storedCode && storedCode === code) {
+      verificationCodes.delete(phoneNumber);
+      return res.json({ success: true });
+    }
+
+    return res.status(400).json({ error: "Invalid or expired verification code" });
   });
 
   // Vite middleware for development
