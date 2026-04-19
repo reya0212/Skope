@@ -68,6 +68,27 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
 
+// --- Helpers ---
+
+const calculateAge = (dob: string): string => {
+  if (!dob) return '';
+  const birthDate = new Date(dob);
+  const today = new Date();
+  
+  // Minimum 5 years old
+  const fiveYearsAgo = new Date();
+  fiveYearsAgo.setFullYear(today.getFullYear() - 5);
+  
+  if (birthDate > fiveYearsAgo) return '';
+
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age.toString();
+};
+
 // --- Components ---
 
 const FileUpload = ({ 
@@ -707,6 +728,25 @@ const RoleSelection = ({ onSelect, existingProfile }: { onSelect: (role: UserRol
   const [studentAge, setStudentAge] = useState(existingProfile?.age?.toString() || '');
   const [studentLocation, setStudentLocation] = useState(existingProfile?.location || '');
   const [studentPhone, setStudentPhone] = useState(existingProfile?.phone || '');
+  const [isVerifyingPhone, setIsVerifyingPhone] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+  const [dobError, setDobError] = useState('');
+
+  const handleDobChange = (val: string) => {
+    setStudentDob(val);
+    const age = calculateAge(val);
+    setStudentAge(age);
+  };
+
+  const handleVerifyPhone = () => {
+    if (!studentPhone) return;
+    setIsVerifyingPhone(true);
+    // Simulate verification
+    setTimeout(() => {
+      setIsVerifyingPhone(false);
+      setIsPhoneVerified(true);
+    }, 1500);
+  };
 
   if (step === 'student_details') {
     return (
@@ -761,21 +801,25 @@ const RoleSelection = ({ onSelect, existingProfile }: { onSelect: (role: UserRol
                 <input 
                   type="date"
                   value={studentDob}
-                  onChange={(e) => setStudentDob(e.target.value)}
-                  className="w-full p-4 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-2xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+                  onChange={(e) => handleDobChange(e.target.value)}
+                  className={`w-full p-4 bg-skope-light/20 dark:bg-skope-deep border rounded-2xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white transition-all ${
+                    dobError ? 'border-red-500' : 'border-skope-sky dark:border-skope-steel'
+                  }`}
                 />
               </div>
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-400 uppercase ml-4">Age</label>
                 <input 
                   type="number"
+                  readOnly
                   value={studentAge}
-                  onChange={(e) => setStudentAge(e.target.value)}
-                  placeholder="Your age"
-                  className="w-full p-4 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-2xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+                  placeholder="Computed age"
+                  className="w-full p-4 bg-slate-100 dark:bg-skope-deep/50 border border-skope-sky dark:border-skope-steel rounded-2xl outline-none dark:text-white cursor-not-allowed opacity-80"
                 />
               </div>
             </div>
+            {dobError && <p className="text-[10px] text-red-500 font-bold ml-4 animate-pulse">{dobError}</p>}
+
             <div className="space-y-1">
               <label className="text-xs font-bold text-slate-400 uppercase ml-4">Location</label>
               <input 
@@ -786,13 +830,31 @@ const RoleSelection = ({ onSelect, existingProfile }: { onSelect: (role: UserRol
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-400 uppercase ml-4">Phone Number</label>
-              <input 
-                value={studentPhone}
-                onChange={(e) => setStudentPhone(e.target.value)}
-                placeholder="+1 234 567 890"
-                className="w-full p-4 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-2xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
-              />
+              <div className="flex justify-between items-center ml-4 mr-4">
+                <label className="text-xs font-bold text-slate-400 uppercase">Phone Number <span className="text-[10px] font-normal lowercase">(Optional)</span></label>
+                {isPhoneVerified && <span className="text-[10px] text-green-500 font-bold flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Verified</span>}
+              </div>
+              <div className="flex gap-2">
+                <input 
+                  value={studentPhone}
+                  onChange={(e) => {
+                    setStudentPhone(e.target.value);
+                    setIsPhoneVerified(false);
+                  }}
+                  placeholder="+1 234 567 890"
+                  className="flex-1 p-4 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-2xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+                />
+                {studentPhone && !isPhoneVerified && (
+                  <button 
+                    type="button"
+                    onClick={handleVerifyPhone}
+                    disabled={isVerifyingPhone}
+                    className="px-4 bg-skope-navy dark:bg-skope-blue text-white rounded-2xl text-xs font-bold hover:bg-skope-deep transition-all disabled:opacity-50"
+                  >
+                    {isVerifyingPhone ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : 'Verify'}
+                  </button>
+                )}
+              </div>
             </div>
             <button 
               type="submit"
@@ -1746,8 +1808,23 @@ const ProfileView = ({ profile, onUpdate, accFilter, setAccFilter, onShowPrivacy
                     id="edit-birthday"
                     type="date"
                     value={formData.birthday || ''}
-                    onChange={(e) => setFormData({...formData, birthday: e.target.value})}
+                    onChange={(e) => {
+                      const dob = e.target.value;
+                      const age = calculateAge(dob);
+                      setFormData({...formData, birthday: dob, age: parseInt(age) || 0});
+                    }}
                     className="w-full p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="edit-age" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Age</label>
+                  <input 
+                    id="edit-age"
+                    type="number"
+                    readOnly
+                    value={formData.age || ''}
+                    placeholder="Auto-calculated"
+                    className="w-full p-3 bg-slate-100 dark:bg-skope-deep/50 border border-skope-sky dark:border-skope-steel rounded-xl outline-none dark:text-white cursor-not-allowed opacity-80"
                   />
                 </div>
                 <div>
@@ -1760,12 +1837,12 @@ const ProfileView = ({ profile, onUpdate, accFilter, setAccFilter, onShowPrivacy
                   />
                 </div>
                 <div>
-                  <label htmlFor="edit-age" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Age</label>
+                  <label htmlFor="edit-phone" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone Number <span className="text-[10px] font-normal lowercase">(Optional)</span></label>
                   <input 
-                    id="edit-age"
-                    type="number"
-                    value={formData.age || ''}
-                    onChange={(e) => setFormData({...formData, age: parseInt(e.target.value)})}
+                    id="edit-phone"
+                    value={formData.phone || ''}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    placeholder="+1 234 567 890"
                     className="w-full p-3 bg-skope-light/20 dark:bg-skope-deep border border-skope-sky dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white"
                   />
                 </div>
@@ -1886,50 +1963,54 @@ const ProfileView = ({ profile, onUpdate, accFilter, setAccFilter, onShowPrivacy
                   <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-1">Location</p>
                   <p className="text-slate-900 dark:text-white font-medium">{profile.location || 'Not set'}</p>
                 </div>
+                <div className="bg-skope-light/10 dark:bg-skope-deep p-4 rounded-2xl">
+                  <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-1">Phone</p>
+                  <p className="text-slate-900 dark:text-white font-medium">{profile.phone || 'Not set'}</p>
+                </div>
               </div>
             )}
 
             {/* Badges Section */}
-            <div className="pt-6 border-t border-skope-light dark:border-skope-steel">
-              <h4 className="text-sm font-black text-skope-dark dark:text-white uppercase tracking-widest mb-4 flex items-center gap-2">
-                <Medal className="w-4 h-4 text-skope-navy dark:text-skope-blue" />
-                Earned Badges
-              </h4>
-              {profile.badges && profile.badges.length > 0 ? (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {profile.badges.map((badge) => (
-                    <div key={badge.id} className="flex items-center gap-3 p-3 bg-skope-light/10 dark:bg-skope-deep border border-skope-light dark:border-skope-steel rounded-2xl">
-                      <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${badge.color}20` }}>
-                        <Medal className="w-4 h-4" style={{ color: badge.color }} />
+            {profile.role === 'student' && (
+              <div className="pt-6 border-t border-skope-light dark:border-skope-steel">
+                <h4 className="text-sm font-black text-skope-dark dark:text-white uppercase tracking-widest mb-4 flex items-center gap-2">
+                  <Medal className="w-4 h-4 text-skope-navy dark:text-skope-blue" />
+                  Earned Badges
+                </h4>
+                {profile.badges && profile.badges.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {profile.badges.map((badge) => (
+                      <div key={badge.id} className="flex items-center gap-3 p-3 bg-skope-light/10 dark:bg-skope-deep border border-skope-light dark:border-skope-steel rounded-2xl">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: `${badge.color}20` }}>
+                          <Medal className="w-4 h-4" style={{ color: badge.color }} />
+                        </div>
+                        <div className="overflow-hidden">
+                          <p className="text-[10px] font-black text-skope-dark dark:text-white truncate">{badge.title}</p>
+                          <p className="text-[8px] text-slate-400">Earned!</p>
+                        </div>
                       </div>
-                      <div className="overflow-hidden">
-                        <p className="text-[10px] font-black text-skope-dark dark:text-white truncate">{badge.title}</p>
-                        <p className="text-[8px] text-slate-400">Earned!</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-6 bg-slate-50 dark:bg-skope-deep/20 rounded-2xl border border-dashed border-slate-200 dark:border-skope-steel text-center">
-                  <p className="text-xs text-slate-400">No badges earned yet. Complete roadmap steps to earn them!</p>
-                </div>
-              )}
-            </div>
-
-            <div>
-              <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-1">Bio</p>
-              <p className="text-slate-600 dark:text-slate-400">{profile.bio || 'No bio yet.'}</p>
-            </div>
-            <div>
-              <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-1">Desired Roles</p>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {profile.desiredJobs?.map((job, i) => (
-                  <span key={i} className="px-3 py-1 bg-skope-light dark:bg-skope-deep text-skope-navy dark:text-skope-blue rounded-full text-sm font-medium">
-                    {job}
-                  </span>
-                )) || <p className="text-slate-400 dark:text-slate-500 italic">No roles specified.</p>}
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-6 bg-slate-50 dark:bg-skope-deep/20 rounded-2xl border border-dashed border-slate-200 dark:border-skope-steel text-center">
+                    <p className="text-xs text-slate-400">No badges earned yet. Complete roadmap steps to earn them!</p>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
+
+            {profile.role === 'student' && (
+              <div>
+                <p className="text-xs text-slate-400 dark:text-slate-500 uppercase font-bold mb-1">Desired Roles</p>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {profile.desiredJobs?.map((job, i) => (
+                    <span key={i} className="px-3 py-1 bg-skope-light dark:bg-skope-deep text-skope-navy dark:text-skope-blue rounded-full text-sm font-medium">
+                      {job}
+                    </span>
+                  )) || <p className="text-slate-400 dark:text-slate-500 italic">No roles specified.</p>}
+                </div>
+              </div>
+            )}
             {/* Accessibility Settings */}
             <div className="pt-6 border-t border-slate-100 dark:border-skope-steel space-y-6">
               <h4 className="text-sm font-black text-skope-dark dark:text-white uppercase tracking-widest flex items-center gap-2">
@@ -2147,9 +2228,12 @@ const StudentView = ({ profile, activeTab, onViewProfile }: { profile: UserProfi
     setIsUpdatingJobs(true);
     try {
       const currentJobs = profile.desiredJobs || [];
+      const updatedJobs = currentJobs.filter(j => j !== jobToRemove);
+      
       await updateDoc(doc(db, 'users', profile.uid), {
-        desiredJobs: currentJobs.filter(j => j !== jobToRemove)
+        desiredJobs: updatedJobs
       });
+      console.log(`Successfully removed job: ${jobToRemove}`);
     } catch (error) {
       console.error("Failed to remove job", error);
     } finally {
@@ -2293,15 +2377,18 @@ const StudentView = ({ profile, activeTab, onViewProfile }: { profile: UserProfi
 
         <div className="flex flex-wrap gap-2">
           {profile.desiredJobs?.map((job, i) => (
-            <span key={i} className="flex items-center gap-2 px-4 py-2 bg-skope-light dark:bg-skope-deep text-skope-navy dark:text-skope-light rounded-full text-sm font-bold border border-skope-sky dark:border-skope-steel">
+            <span key={i} className="flex items-center gap-2 pl-4 pr-2 py-2 bg-skope-light dark:bg-skope-deep text-skope-navy dark:text-skope-light rounded-full text-sm font-bold border border-skope-sky dark:border-skope-steel group">
               {job}
               <button 
                 type="button"
-                onClick={() => handleRemoveJob(job)}
-                className="hover:text-skope-dark dark:hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-skope-blue outline-none rounded-full"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemoveJob(job);
+                }}
+                className="p-1 hover:bg-red-500 hover:text-white transition-all rounded-full outline-none focus-visible:ring-2 focus-visible:ring-skope-blue"
                 aria-label={`Remove ${job}`}
               >
-                <X className="w-4 h-4" />
+                <X className="w-3 h-3" />
               </button>
             </span>
           ))}

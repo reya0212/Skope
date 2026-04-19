@@ -1,12 +1,24 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-// Use the platform-provided key or a custom one from environment variables
-const apiKey = process.env.GEMINI_API_KEY || "";
-const ai = new GoogleGenAI({ apiKey });
-
+// Service to call the server-side Gemini proxy
 export interface FileData {
   data: string; // base64
   mimeType: string;
+}
+
+async function callProxy(action: string, payload: any) {
+  const response = await fetch("/api/gemini", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, payload })
+  });
+  
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error || "Server proxy error");
+  }
+  
+  return response.json();
 }
 
 export async function analyzeCV(cvText: string | null, fileData: FileData | null, desiredJobs: string[] = []) {
@@ -55,25 +67,25 @@ export async function analyzeCV(cvText: string | null, fileData: FileData | null
   parts.push({ text: prompt });
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: { parts },
+    const result = await callProxy("analyzeCV", {
+      parts,
       config: {
         responseMimeType: "application/json",
+        // Using Type directly if available, else standard string
         responseSchema: {
-          type: Type.OBJECT,
+          type: "object",
           properties: {
-            analysis: { type: Type.STRING, description: "Markdown formatted analysis" },
-            atsScore: { type: Type.NUMBER, description: "ATS score from 0 to 100" },
+            analysis: { type: "string" },
+            atsScore: { type: "number" },
             suggestedCourses: {
-              type: Type.ARRAY,
+              type: "array",
               items: {
-                type: Type.OBJECT,
+                type: "object",
                 properties: {
-                  title: { type: Type.STRING },
-                  provider: { type: Type.STRING },
-                  url: { type: Type.STRING },
-                  relevance: { type: Type.STRING, description: "Why this course is recommended" }
+                  title: { type: "string" },
+                  provider: { type: "string" },
+                  url: { type: "string" },
+                  relevance: { type: "string" }
                 },
                 required: ["title", "provider", "url", "relevance"]
               }
@@ -84,20 +96,16 @@ export async function analyzeCV(cvText: string | null, fileData: FileData | null
       }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("Empty response from AI");
+    const text = result.text;
+    if (!text) throw new Error("Empty response from proxy");
     
-    // Clean up potential markdown code blocks and extract JSON
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("No JSON object found in response");
-    }
-    const jsonStr = jsonMatch[0];
-    return JSON.parse(jsonStr);
+    if (!jsonMatch) throw new Error("No JSON object found in response");
+    return JSON.parse(jsonMatch[0]);
   } catch (e: any) {
-    console.error("Gemini API or Parsing failed", e);
+    console.error("Gemini Proxy failed", e);
     return {
-      analysis: `Analysis failed. Error: ${e.message || "Unknown error"}. Please try extracting the text manually or use a smaller file.`,
+      analysis: `Analysis failed. Error: ${e.message || "Unknown error"}.`,
       atsScore: 0,
       suggestedCourses: []
     };
@@ -106,19 +114,16 @@ export async function analyzeCV(cvText: string | null, fileData: FileData | null
 
 export async function getChatResponse(message: string, context: string) {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `
+    const prompt = `
         You are "Skope Buddy", a helpful career assistant. 
         Context about the user: ${context}
         
         User message: ${message}
         
         Provide helpful, encouraging, and professional career advice.
-      `,
-    });
-
-    return response.text || "I'm sorry, I couldn't generate a response.";
+    `;
+    const result = await callProxy("chat", { prompt });
+    return result.text || "I'm sorry, I couldn't generate a response.";
   } catch (e: any) {
     console.error("Chat error", e);
     return "I'm sorry, I'm having trouble connecting to Skope Buddy right now.";
@@ -154,77 +159,56 @@ export async function analyzeJobMatch(cvText: string | null, fileData: FileData 
       4. **CV Tailoring Strategy**: Specific advice on which sections to emphasize or reorder for this role.
       5. **Cover Letter Strategy**: Key themes and "hooks" from the user's background to include in a cover letter for this specific job.
       
-      Return as JSON with the following schema:
-      {
-        "score": number, 
-        "analysis": string, 
-        "tips": string[], 
-        "tailoringStrategy": string, 
-        "coverLetterTips": string[]
-      }
+      Return as JSON.
   `;
   
   parts.push({ text: prompt });
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: { parts },
+    const result = await callProxy("analyzeCV", {
+      parts,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
+          type: "object",
           properties: {
-            score: { type: Type.NUMBER },
-            analysis: { type: Type.STRING },
-            tips: { type: Type.ARRAY, items: { type: Type.STRING } },
-            tailoringStrategy: { type: Type.STRING },
-            coverLetterTips: { type: Type.ARRAY, items: { type: Type.STRING } }
+            score: { type: "number" },
+            analysis: { type: "string" },
+            tips: { type: "array", items: { type: "string" } },
+            tailoringStrategy: { type: "string" },
+            coverLetterTips: { type: "array", items: { type: "string" } }
           },
           required: ["score", "analysis", "tips", "tailoringStrategy", "coverLetterTips"]
         }
       }
     });
 
-    const text = response.text;
-    if (!text) throw new Error("Empty response from AI");
+    const text = result.text;
+    if (!text) throw new Error("Empty response from proxy");
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error("No JSON object found in response");
-    }
-    const jsonStr = jsonMatch[0];
-    return JSON.parse(jsonStr);
+    if (!jsonMatch) throw new Error("No JSON object found");
+    return JSON.parse(jsonMatch[0]);
   } catch (e: any) {
-    console.error("Gemini Match Analysis API Error", e);
-    return { score: 0, analysis: `Failed to analyze match: ${e.message || "Unknown error"}`, tips: [] };
+    console.error("Gemini Match Proxy Error", e);
+    return { score: 0, analysis: `Failed to analyze match: ${e.message}`, tips: [] };
   }
 }
 
 export async function getInterviewResponse(history: {role: 'user' | 'ai', text: string}[], jobTitle: string, jobDescription: string) {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `
+    const prompt = `
         You are a highly professional and demanding interviewer for the position of ${jobTitle}.
         Job Description: ${jobDescription}
-        
-        CRITICAL INSTRUCTIONS:
-        1. Stay strictly in character. Do not break the fourth wall.
-        2. Ask one challenging, realistic question at a time.
-        3. React naturally to the candidate's answers. If they are vague, ask for specifics. If they are impressive, acknowledge it briefly and move to a follow-up.
-        4. Use industry-specific terminology and scenarios.
-        5. The interview should feel high-stakes and professional.
         
         Conversation History:
         ${history.map(h => `${h.role === 'user' ? 'Candidate' : 'Interviewer'}: ${h.text}`).join('\n')}
         
-        Provide the next response as the Interviewer. Do not provide feedback unless the candidate explicitly asks for it at the end.
-      `,
-    });
-
-    return response.text || "I'm sorry, I couldn't generate a response.";
+        Provide the next response as the Interviewer.
+    `;
+    const result = await callProxy("interview", { prompt });
+    return result.text || "I'm sorry, I couldn't generate a response.";
   } catch (e: any) {
-    console.error("Interview error", e);
+    console.error("Interview proxy error", e);
     return "I'm sorry, I'm having trouble with the interview session right now.";
   }
 }
