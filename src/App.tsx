@@ -2327,13 +2327,14 @@ const StudentView = ({ profile, activeTab, onViewProfile }: { profile: UserProfi
               <button 
                 type="button"
                 onClick={(e) => {
+                  e.preventDefault();
                   e.stopPropagation();
                   handleRemoveJob(job);
                 }}
-                className="p-1 hover:bg-red-500 hover:text-white transition-all rounded-full outline-none focus-visible:ring-2 focus-visible:ring-skope-blue"
+                className="p-1.5 hover:bg-red-500 hover:text-white transition-all rounded-full outline-none focus-visible:ring-2 focus-visible:ring-skope-blue"
                 aria-label={`Remove ${job}`}
               >
-                <X className="w-3 h-3" />
+                <X className="w-4 h-4" />
               </button>
             </span>
           ))}

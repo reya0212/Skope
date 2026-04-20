@@ -6,20 +6,7 @@ export interface FileData {
   mimeType: string;
 }
 
-async function callProxy(action: string, payload: any) {
-  const response = await fetch("/api/gemini", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action, payload })
-  });
-  
-  if (!response.ok) {
-    const err = await response.json();
-    throw new Error(err.error || "Server proxy error");
-  }
-  
-  return response.json();
-}
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
 
 export async function analyzeCV(cvText: string | null, fileData: FileData | null, desiredJobs: string[] = []) {
   const parts: any[] = [];
@@ -67,25 +54,25 @@ export async function analyzeCV(cvText: string | null, fileData: FileData | null
   parts.push({ text: prompt });
 
   try {
-    const result = await callProxy("analyzeCV", {
-      parts,
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [{ parts }],
       config: {
         responseMimeType: "application/json",
-        // Using Type directly if available, else standard string
         responseSchema: {
-          type: "object",
+          type: Type.OBJECT,
           properties: {
-            analysis: { type: "string" },
-            atsScore: { type: "number" },
+            analysis: { type: Type.STRING },
+            atsScore: { type: Type.NUMBER },
             suggestedCourses: {
-              type: "array",
+              type: Type.ARRAY,
               items: {
-                type: "object",
+                type: Type.OBJECT,
                 properties: {
-                  title: { type: "string" },
-                  provider: { type: "string" },
-                  url: { type: "string" },
-                  relevance: { type: "string" }
+                  title: { type: Type.STRING },
+                  provider: { type: Type.STRING },
+                  url: { type: Type.STRING },
+                  relevance: { type: Type.STRING }
                 },
                 required: ["title", "provider", "url", "relevance"]
               }
@@ -96,14 +83,12 @@ export async function analyzeCV(cvText: string | null, fileData: FileData | null
       }
     });
 
-    const text = result.text;
-    if (!text) throw new Error("Empty response from proxy");
+    const text = response.text;
+    if (!text) throw new Error("Empty response from Gemini");
     
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON object found in response");
-    return JSON.parse(jsonMatch[0]);
+    return JSON.parse(text);
   } catch (e: any) {
-    console.error("Gemini Proxy failed", e);
+    console.error("Gemini failed", e);
     return {
       analysis: `Analysis failed. Error: ${e.message || "Unknown error"}.`,
       atsScore: 0,
@@ -122,8 +107,11 @@ export async function getChatResponse(message: string, context: string) {
         
         Provide helpful, encouraging, and professional career advice.
     `;
-    const result = await callProxy("chat", { prompt });
-    return result.text || "I'm sorry, I couldn't generate a response.";
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt
+    });
+    return response.text || "I'm sorry, I couldn't generate a response.";
   } catch (e: any) {
     console.error("Chat error", e);
     return "I'm sorry, I'm having trouble connecting to Skope Buddy right now.";
@@ -165,31 +153,30 @@ export async function analyzeJobMatch(cvText: string | null, fileData: FileData 
   parts.push({ text: prompt });
 
   try {
-    const result = await callProxy("analyzeCV", {
-      parts,
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [{ parts }],
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-          type: "object",
+          type: Type.OBJECT,
           properties: {
-            score: { type: "number" },
-            analysis: { type: "string" },
-            tips: { type: "array", items: { type: "string" } },
-            tailoringStrategy: { type: "string" },
-            coverLetterTips: { type: "array", items: { type: "string" } }
+            score: { type: Type.NUMBER },
+            analysis: { type: Type.STRING },
+            tips: { type: Type.ARRAY, items: { type: Type.STRING } },
+            tailoringStrategy: { type: Type.STRING },
+            coverLetterTips: { type: Type.ARRAY, items: { type: Type.STRING } }
           },
           required: ["score", "analysis", "tips", "tailoringStrategy", "coverLetterTips"]
         }
       }
     });
 
-    const text = result.text;
-    if (!text) throw new Error("Empty response from proxy");
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON object found");
-    return JSON.parse(jsonMatch[0]);
+    const text = response.text;
+    if (!text) throw new Error("Empty response from Gemini");
+    return JSON.parse(text);
   } catch (e: any) {
-    console.error("Gemini Match Proxy Error", e);
+    console.error("Gemini Match Error", e);
     return { score: 0, analysis: `Failed to analyze match: ${e.message}`, tips: [] };
   }
 }
@@ -205,10 +192,13 @@ export async function getInterviewResponse(history: {role: 'user' | 'ai', text: 
         
         Provide the next response as the Interviewer.
     `;
-    const result = await callProxy("interview", { prompt });
-    return result.text || "I'm sorry, I couldn't generate a response.";
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt
+    });
+    return response.text || "I'm sorry, I couldn't generate a response.";
   } catch (e: any) {
-    console.error("Interview proxy error", e);
+    console.error("Interview error", e);
     return "I'm sorry, I'm having trouble with the interview session right now.";
   }
 }
