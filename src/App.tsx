@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   signInWithPopup, 
   onAuthStateChanged, 
@@ -2971,16 +2971,30 @@ const InterviewSimulator = ({ job, userId, onBack }: { job: Job, userId: string,
   const [messages, setMessages] = useState<{role: 'user' | 'ai', text: string}[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const hasStarted = useRef(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, isTyping, error]);
+
+  useEffect(() => {
+    if (hasStarted.current) return;
+    hasStarted.current = true;
+
     // Initial greeting
     const startInterview = async () => {
       setIsTyping(true);
+      setError(null);
       try {
         const response = await getInterviewResponse([], job.title, job.description);
         setMessages([{ role: 'ai', text: response }]);
-      } catch (error) {
-        console.error("Interview start failed", error);
+      } catch (err: any) {
+        console.error("Interview start failed", err);
+        setError("Failed to start the interview session. Please check your connection and try again.");
       } finally {
         setIsTyping(false);
       }
@@ -2988,8 +3002,8 @@ const InterviewSimulator = ({ job, userId, onBack }: { job: Job, userId: string,
     startInterview();
   }, [job.title, job.description]);
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSend = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     if (!input.trim() || isTyping) return;
 
     const userMsg = input;
@@ -2997,6 +3011,7 @@ const InterviewSimulator = ({ job, userId, onBack }: { job: Job, userId: string,
     const newMessages = [...messages, { role: 'user', text: userMsg }] as {role: 'user' | 'ai', text: string}[];
     setMessages(newMessages);
     setIsTyping(true);
+    setError(null);
 
     // Roadmap progress
     await completeRoadmapStep(userId, 'interview_prep');
@@ -3004,8 +3019,9 @@ const InterviewSimulator = ({ job, userId, onBack }: { job: Job, userId: string,
     try {
       const response = await getInterviewResponse(newMessages, job.title, job.description);
       setMessages(prev => [...prev, { role: 'ai', text: response }]);
-    } catch (error) {
-      console.error("Interview response failed", error);
+    } catch (err: any) {
+      console.error("Interview response failed", err);
+      setError("AI was unable to generate a response. Please try sending your message again.");
     } finally {
       setIsTyping(false);
     }
@@ -3040,10 +3056,13 @@ const InterviewSimulator = ({ job, userId, onBack }: { job: Job, userId: string,
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 max-w-3xl mx-auto w-full">
+      <div 
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto p-6 space-y-6 max-w-3xl mx-auto w-full scroll-smooth"
+      >
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] p-5 rounded-3xl ${
+            <div className={`max-w-[85%] p-5 rounded-3xl animate-in slide-in-from-bottom-2 duration-300 ${
               m.role === 'user' 
                 ? 'bg-skope-navy dark:bg-skope-blue text-white rounded-tr-none shadow-lg shadow-skope-dark/50' 
                 : 'bg-skope-deep dark:bg-skope-dark text-slate-100 rounded-tl-none border border-skope-steel'
@@ -3056,8 +3075,27 @@ const InterviewSimulator = ({ job, userId, onBack }: { job: Job, userId: string,
         ))}
         {isTyping && (
           <div className="flex justify-start">
-            <div className="bg-skope-deep dark:bg-skope-dark p-5 rounded-3xl rounded-tl-none border border-skope-steel animate-pulse">
-              <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
+            <div className="bg-skope-deep dark:bg-skope-dark p-5 rounded-3xl rounded-tl-none border border-skope-steel animate-pulse flex items-center gap-3">
+              <div className="flex gap-1">
+                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                <div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div>
+              </div>
+              <span className="text-xs text-slate-400 font-bold uppercase tracking-widest">Interviewer is thinking</span>
+            </div>
+          </div>
+        )}
+        {error && (
+          <div className="flex justify-center">
+            <div className="bg-red-500/10 border border-red-500/50 p-4 rounded-2xl flex items-center gap-3 text-red-500 text-sm font-bold">
+              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+              <p>{error}</p>
+              <button 
+                onClick={() => handleSend()}
+                className="ml-2 px-3 py-1 bg-red-500 text-white rounded-lg text-xs hover:bg-red-600 transition-all"
+              >
+                Retry
+              </button>
             </div>
           </div>
         )}
@@ -3114,59 +3152,6 @@ const JobsList = ({ role, userId, profile, onViewProfile }: { role: UserRole, us
     email: '',
     cvText: ''
   });
-  const [verificationStep, setVerificationStep] = useState<'idle' | 'sending' | 'sent' | 'verifying' | 'verified'>('idle');
-  const [verificationCode, setVerificationCode] = useState('');
-  const [smsError, setSmsError] = useState('');
-
-  const handleSendSMS = async () => {
-    if (!applyFormData.phone) return;
-    setVerificationStep('sending');
-    setSmsError('');
-    try {
-      const res = await fetch("/api/phone/send-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: applyFormData.phone })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setVerificationStep('sent');
-        if (data.mock && data.code) {
-          console.log("MOCK CODE:", data.code);
-          alert(`Development Mode: SMS sent to ${applyFormData.phone}. Code: ${data.code} (Check logs for real use)`);
-        }
-      } else {
-        setSmsError(data.error || "Failed to send SMS");
-        setVerificationStep('idle');
-      }
-    } catch (err) {
-      setSmsError("Network error sending SMS");
-      setVerificationStep('idle');
-    }
-  };
-
-  const handleVerifyCode = async () => {
-    if (!verificationCode) return;
-    setVerificationStep('verifying');
-    setSmsError('');
-    try {
-      const res = await fetch("/api/phone/verify-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phoneNumber: applyFormData.phone, code: verificationCode })
-      });
-      const data = await res.json();
-      if (data.success) {
-        setVerificationStep('verified');
-      } else {
-        setSmsError(data.error || "Invalid code");
-        setVerificationStep('sent');
-      }
-    } catch (err) {
-      setSmsError("Network error verifying code");
-      setVerificationStep('sent');
-    }
-  };
 
   useEffect(() => {
     if (role === 'student' && userId) {
@@ -3236,11 +3221,6 @@ const JobsList = ({ role, userId, profile, onViewProfile }: { role: UserRole, us
     e.preventDefault();
     if (!userId || isApplying || !selectedJob) return;
     
-    if (verificationStep !== 'verified' && applyFormData.phone) {
-      setSmsError("Please verify your phone number before submitting.");
-      return;
-    }
-
     setIsApplying(selectedJob.id);
     try {
       await addDoc(collection(db, 'job_applications'), {
@@ -3530,72 +3510,14 @@ const JobsList = ({ role, userId, profile, onViewProfile }: { role: UserRole, us
                   />
                 </div>
                 <div className="space-y-1">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-slate-400 uppercase">Phone Number</label>
-                    {verificationStep === 'verified' && <span className="text-[10px] text-green-500 font-bold flex items-center gap-1"><CheckCircle2 className="w-3 h-3" /> Verified</span>}
-                  </div>
-                  <div className="flex gap-2">
-                    <input 
-                      required
-                      disabled={verificationStep === 'verified' || verificationStep === 'sending' || verificationStep === 'sent' || verificationStep === 'verifying'}
-                      value={applyFormData.phone}
-                      onChange={(e) => {
-                        setApplyFormData({...applyFormData, phone: e.target.value});
-                        setVerificationStep('idle');
-                      }}
-                      placeholder="+1234567890"
-                      className="flex-1 p-3 bg-white dark:bg-skope-dark border border-skope-light dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white text-sm disabled:opacity-50"
-                    />
-                    {verificationStep === 'idle' && applyFormData.phone && (
-                      <button 
-                        type="button"
-                        onClick={handleSendSMS}
-                        className="px-4 bg-skope-navy dark:bg-skope-blue text-white rounded-xl font-bold hover:opacity-90 transition-all text-xs"
-                      >
-                        Verify
-                      </button>
-                    )}
-                    {(verificationStep === 'sending' || verificationStep === 'verifying') && (
-                      <div className="px-4 flex items-center justify-center bg-slate-100 dark:bg-skope-deep rounded-xl">
-                        <Loader2 className="w-4 h-4 animate-spin text-skope-blue" />
-                      </div>
-                    )}
-                    {verificationStep === 'verified' && (
-                      <button 
-                        type="button"
-                        onClick={() => setVerificationStep('idle')}
-                        className="px-4 text-slate-400 font-bold text-xs hover:text-skope-blue whitespace-nowrap"
-                      >
-                        Change
-                      </button>
-                    )}
-                  </div>
-                  {verificationStep === 'sent' && (
-                    <motion.div 
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="mt-2 p-3 bg-blue-50 dark:bg-skope-blue/10 rounded-xl border border-blue-200 dark:border-skope-blue/30"
-                    >
-                      <p className="text-[10px] text-skope-navy dark:text-skope-blue font-bold mb-2">Enter code sent to your phone:</p>
-                      <div className="flex gap-2">
-                        <input 
-                          value={verificationCode}
-                          onChange={(e) => setVerificationCode(e.target.value)}
-                          placeholder="XXXXXX"
-                          maxLength={6}
-                          className="flex-1 p-2 bg-white dark:bg-skope-dark border border-skope-blue rounded-lg outline-none text-center font-bold tracking-widest dark:text-white text-sm"
-                        />
-                        <button 
-                          type="button"
-                          onClick={handleVerifyCode}
-                          className="px-4 bg-skope-blue text-white rounded-lg font-bold hover:brightness-110 transition-all text-xs"
-                        >
-                          Confirm
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                  {smsError && <p className="text-[10px] text-red-500 font-bold mt-1">{smsError}</p>}
+                  <label className="text-xs font-bold text-slate-400 uppercase">Phone Number</label>
+                  <input 
+                    required
+                    value={applyFormData.phone}
+                    onChange={(e) => setApplyFormData({...applyFormData, phone: e.target.value})}
+                    placeholder="+1234567890"
+                    className="w-full p-3 bg-white dark:bg-skope-dark border border-skope-light dark:border-skope-steel rounded-xl outline-none focus:ring-2 focus:ring-skope-blue dark:text-white text-sm"
+                  />
                 </div>
                 <div className="space-y-1 col-span-full">
                   <label className="text-xs font-bold text-slate-400 uppercase">Email Address</label>

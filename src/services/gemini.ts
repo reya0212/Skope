@@ -55,7 +55,7 @@ export async function analyzeCV(cvText: string | null, fileData: FileData | null
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.1-pro-preview",
       contents: [{ parts }],
       config: {
         responseMimeType: "application/json",
@@ -154,7 +154,7 @@ export async function analyzeJobMatch(cvText: string | null, fileData: FileData 
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.1-pro-preview",
       contents: [{ parts }],
       config: {
         responseMimeType: "application/json",
@@ -184,16 +184,31 @@ export async function analyzeJobMatch(cvText: string | null, fileData: FileData 
 export async function getInterviewResponse(history: {role: 'user' | 'ai', text: string}[], jobTitle: string, jobDescription: string) {
   try {
     const prompt = `
-        You are a highly professional and demanding interviewer for the position of ${jobTitle}.
-        Job Description: ${jobDescription}
+        You are a highly professional, senior-level expert interviewer for the position of "${jobTitle}".
         
-        Conversation History:
+        CONTEXT:
+        Job Description: ${jobDescription}
+        Current Year: 2026.
+        
+        GOAL:
+        Conduct a realistic, challenging, and technical interview. If the candidate gives a simple or "surface-level" answer, you MUST dig deeper and ask for specific technical implementation details, measurable results, or methodology. If they give a complex answer, acknowledge the depth and pivot to a related complex scenario or "what-if" question.
+        
+        STYLE:
+        - Demanding but professional.
+        - Focus on "How" and "Why".
+        - Do not just ask a list of questions; respond to their specific answers.
+        
+        CONVERSATION HISTORY:
+        ${history.length === 0 ? "No history yet. Start by introducing yourself and asking the first behavioral or technical opening question." : ""}
         ${history.map(h => `${h.role === 'user' ? 'Candidate' : 'Interviewer'}: ${h.text}`).join('\n')}
         
-        Provide the next response as the Interviewer.
+        INSTRUCTIONS FOR NEXT RESPONSE:
+        - Provide the next response as the Interviewer.
+        - Keep it concise but impactful.
+        - If the history is empty, greet and start the interview.
     `;
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.1-pro-preview",
       contents: prompt
     });
     return response.text || "I'm sorry, I couldn't generate a response.";
