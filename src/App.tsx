@@ -431,9 +431,6 @@ const VerifyEmail = ({ user }: { user: User }) => {
           <div className="pt-6 mt-6 border-t border-slate-100 dark:border-skope-steel flex flex-col items-center gap-2">
             <p className="font-bold italic">Thanks,</p>
             <p className="font-black text-skope-navy dark:text-skope-blue uppercase tracking-[0.2em] text-xs">Skope</p>
-            <div className="mt-2 w-10 h-10 bg-skope-navy rounded-xl flex items-center justify-center overflow-hidden">
-              <img src="/Logo.png" alt="Skope Logo" className="w-full h-full object-cover" />
-            </div>
           </div>
         </div>
 

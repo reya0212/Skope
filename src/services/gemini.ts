@@ -55,7 +55,7 @@ export async function analyzeCV(cvText: string | null, fileData: FileData | null
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-flash-latest",
       contents: [{ role: 'user', parts }],
       config: {
         responseMimeType: "application/json",
@@ -108,7 +108,7 @@ export async function getChatResponse(message: string, context: string) {
         Provide helpful, encouraging, and professional career advice.
     `;
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-flash-latest",
       contents: prompt
     });
     return response.text || "I'm sorry, I couldn't generate a response.";
@@ -154,7 +154,7 @@ export async function analyzeJobMatch(cvText: string | null, fileData: FileData 
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-flash-latest",
       contents: [{ role: 'user', parts }],
       config: {
         responseMimeType: "application/json",
@@ -208,7 +208,7 @@ export async function getInterviewResponse(history: {role: 'user' | 'ai', text: 
         - If the history is empty, greet and start the interview.
     `;
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-flash-latest",
       contents: [{ role: 'user', parts: [{ text: prompt }] }]
     });
     return response.text || "I'm sorry, I couldn't generate a response.";

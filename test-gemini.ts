@@ -6,7 +6,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 async function run() {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-flash-latest",
       contents: [
         { inlineData: { mimeType: 'application/pdf', data: Buffer.from('fake pdf data').toString('base64') } },
         'What is this?'
